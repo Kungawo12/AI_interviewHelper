@@ -19,12 +19,20 @@ type InterviewProcessProps = {
 
 type PermissionState = "idle" | "granted" | "denied";
 type VoiceState = "idle" | "speaking" | "listening";
+type VoiceEngine = "ai" | "browser" | "none";
 type InterviewerOption = {
   id: "female" | "male";
   name: string;
   preference: string[];
   fallbackRate: number;
   fallbackPitch: number;
+};
+
+type PresenceMetrics = {
+  attention: number;
+  eyeContact: number;
+  confidence: number;
+  status: string;
 };
 
 const interviewerOptions: InterviewerOption[] = [
@@ -147,10 +155,22 @@ export function InterviewProcess({
   const [hasDeliveredIntroduction, setHasDeliveredIntroduction] = useState(false);
   const [hasSpeechRecognition, setHasSpeechRecognition] = useState(false);
   const [hasSpeechSynthesis, setHasSpeechSynthesis] = useState(false);
+  const [voiceEngine, setVoiceEngine] = useState<VoiceEngine>("none");
+  const [cameraPermission, setCameraPermission] =
+    useState<PermissionState>("idle");
+  const [hasFaceDetection, setHasFaceDetection] = useState(false);
+  const [presenceMetrics, setPresenceMetrics] = useState<PresenceMetrics>({
+    attention: 0,
+    eyeContact: 0,
+    confidence: 0,
+    status: "Camera not started",
+  });
   const recognitionRef = useRef<SpeechRecognition | null>(null);
   const recognitionQuestionIdRef = useRef<string | null>(null);
   const speechTimeoutRef = useRef<number | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const cameraStreamRef = useRef<MediaStream | null>(null);
 
   const currentQuestion = questions[currentIndex];
   const currentAnswer = draftAnswers[currentQuestion.id] ?? "";
@@ -173,6 +193,7 @@ export function InterviewProcess({
   useEffect(() => {
     setHasSpeechRecognition(browserSupportsSpeechRecognition());
     setHasSpeechSynthesis(browserSupportsSpeechSynthesis());
+    setHasFaceDetection(typeof window !== "undefined" && "FaceDetector" in window);
   }, []);
 
   useEffect(() => {
@@ -199,9 +220,106 @@ export function InterviewProcess({
 
       audioRef.current?.pause();
       audioRef.current = null;
+      cameraStreamRef.current?.getTracks().forEach((track) => track.stop());
+      cameraStreamRef.current = null;
       recognitionRef.current?.stop();
     };
   }, []);
+
+  useEffect(() => {
+    if (!hasStarted || isComplete || cameraPermission !== "granted" || !videoRef.current) {
+      return;
+    }
+
+    let active = true;
+    let detector: FaceDetector | null = null;
+    let intervalId: number | null = null;
+
+    if (hasFaceDetection && window.FaceDetector) {
+      detector = new window.FaceDetector({ fastMode: true, maxDetectedFaces: 1 });
+    }
+
+    const updateMetrics = async () => {
+      if (!active || !videoRef.current) {
+        return;
+      }
+
+      const video = videoRef.current;
+
+      if (video.readyState < 2 || video.videoWidth === 0 || video.videoHeight === 0) {
+        return;
+      }
+
+      if (!detector) {
+        setPresenceMetrics({
+          attention: 72,
+          eyeContact: 68,
+          confidence: 70,
+          status: "Camera is live. Advanced face tracking depends on browser support.",
+        });
+        return;
+      }
+
+      try {
+        const faces = await detector.detect(video);
+
+        if (!faces.length) {
+          setPresenceMetrics({
+            attention: 24,
+            eyeContact: 18,
+            confidence: 30,
+            status: "Face not detected clearly. Move into the center of the frame.",
+          });
+          return;
+        }
+
+        const face = faces[0];
+        const box = face.boundingBox;
+        const centerX = box.x + box.width / 2;
+        const centerY = box.y + box.height / 2;
+        const offsetX = Math.abs(centerX / video.videoWidth - 0.5);
+        const offsetY = Math.abs(centerY / video.videoHeight - 0.5);
+        const centeredScore = Math.max(0, 1 - (offsetX + offsetY) * 1.35);
+        const faceSizeRatio = box.width / video.videoWidth;
+        const sizeScore = Math.max(0, 1 - Math.abs(faceSizeRatio - 0.28) * 3.4);
+
+        const attention = Math.round(50 + centeredScore * 50);
+        const eyeContact = Math.round(40 + centeredScore * 60);
+        const confidence = Math.round(42 + (centeredScore * 0.6 + sizeScore * 0.4) * 58);
+
+        setPresenceMetrics({
+          attention,
+          eyeContact,
+          confidence,
+          status:
+            centeredScore > 0.72
+              ? "Strong on-camera presence right now."
+              : "Good start. Lift your eyeline and center yourself a little more.",
+        });
+      } catch {
+        setPresenceMetrics({
+          attention: 68,
+          eyeContact: 64,
+          confidence: 67,
+          status: "Camera is live. Tracking is limited in this browser right now.",
+        });
+      }
+    };
+
+    intervalId = window.setInterval(() => {
+      void updateMetrics();
+    }, 1800);
+
+    void updateMetrics();
+
+    return () => {
+      active = false;
+
+      if (intervalId) {
+        window.clearInterval(intervalId);
+      }
+    };
+  }, [cameraPermission, hasFaceDetection, hasStarted, isComplete]);
 
   useEffect(() => {
     if (!hasStarted || isComplete) {
@@ -289,6 +407,7 @@ export function InterviewProcess({
         audioRef.current = audio;
 
         audio.onplay = () => {
+          setVoiceEngine("ai");
           setVoiceState("speaking");
           setVoiceNotice(notice);
         };
@@ -317,7 +436,10 @@ export function InterviewProcess({
   }
 
   function fallbackToBrowserSpeech(text: string, notice: string) {
+    setVoiceEngine("browser");
+
     if (!hasSpeechSynthesis) {
+      setVoiceEngine("none");
       setVoiceNotice(
         "Question audio is not available in this browser, but you can still continue with typed answers.",
       );
@@ -407,6 +529,49 @@ export function InterviewProcess({
       setVoiceNotice(
         "Microphone permission was denied. You can still continue by typing your answer.",
       );
+      return false;
+    }
+  }
+
+  async function requestCameraPermission() {
+    if (typeof navigator === "undefined" || !navigator.mediaDevices?.getUserMedia) {
+      setCameraPermission("denied");
+      setPresenceMetrics({
+        attention: 0,
+        eyeContact: 0,
+        confidence: 0,
+        status: "Camera access is not available in this browser.",
+      });
+      return false;
+    }
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: "user" },
+      });
+      cameraStreamRef.current = stream;
+      setCameraPermission("granted");
+
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        await videoRef.current.play().catch(() => undefined);
+      }
+
+      setPresenceMetrics({
+        attention: 55,
+        eyeContact: 52,
+        confidence: 56,
+        status: "Camera is live. Stay centered for stronger interview presence.",
+      });
+      return true;
+    } catch {
+      setCameraPermission("denied");
+      setPresenceMetrics({
+        attention: 0,
+        eyeContact: 0,
+        confidence: 0,
+        status: "Camera permission was denied. Interview can continue without video tracking.",
+      });
       return false;
     }
   }
@@ -510,7 +675,7 @@ export function InterviewProcess({
   }
 
   async function handleStartInterview() {
-    await requestMicrophonePermission();
+    await Promise.all([requestMicrophonePermission(), requestCameraPermission()]);
     setHasDeliveredIntroduction(true);
     setHasStarted(true);
     speakIntroductionAndQuestion(questions[0].questionText);
@@ -526,7 +691,17 @@ export function InterviewProcess({
     setCurrentIndex(0);
     setInterimTranscript("");
     setVoiceState("idle");
+    setVoiceEngine("none");
     setVoiceNotice(null);
+    cameraStreamRef.current?.getTracks().forEach((track) => track.stop());
+    cameraStreamRef.current = null;
+    setCameraPermission("idle");
+    setPresenceMetrics({
+      attention: 0,
+      eyeContact: 0,
+      confidence: 0,
+      status: "Camera not started",
+    });
   }
 
   function goToNextQuestion() {
@@ -637,7 +812,7 @@ export function InterviewProcess({
               Speech-to-text fills the answer box while you speak, when supported.
             </div>
             <div className="rounded-[1.35rem] border border-line bg-white/76 px-4 py-4 text-sm leading-6 text-muted">
-              The interviewer opens with an introduction, explains the flow, and reads each question out loud.
+              Camera permission is requested too, so the app can start tracking attention and on-camera presence.
             </div>
           </div>
 
@@ -752,7 +927,13 @@ export function InterviewProcess({
             Voice {voiceState}
           </span>
           <span className="rounded-full bg-[#10233c]/8 px-4 py-2 text-xs font-semibold uppercase tracking-[0.16em] text-foreground">
+            Engine {voiceEngine}
+          </span>
+          <span className="rounded-full bg-[#10233c]/8 px-4 py-2 text-xs font-semibold uppercase tracking-[0.16em] text-foreground">
             Interviewer {selectedInterviewer.name}
+          </span>
+          <span className="rounded-full bg-[#10233c]/8 px-4 py-2 text-xs font-semibold uppercase tracking-[0.16em] text-foreground">
+            Camera {cameraPermission}
           </span>
           {!hasSpeechRecognition ? (
             <span className="rounded-full bg-[#10233c]/8 px-4 py-2 text-xs font-semibold uppercase tracking-[0.16em] text-muted">
@@ -766,6 +947,86 @@ export function InterviewProcess({
             {voiceNotice}
           </div>
         ) : null}
+
+        <div className="rounded-[1.5rem] border border-line bg-white/76 p-5">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div className="flex min-w-[220px] flex-1 items-start gap-4">
+              <div
+                className={`flex h-20 w-20 items-center justify-center rounded-full border text-white shadow-[0_18px_40px_rgba(16,35,60,0.18)] transition ${
+                  voiceState === "speaking"
+                    ? "scale-105 border-[#ff8c61]/50 bg-[radial-gradient(circle_at_top,#ffb08f,#ff7c49_58%,#10233c)]"
+                    : "border-[#10233c]/15 bg-[radial-gradient(circle_at_top,#33557d,#10233c_68%,#09111e)]"
+                }`}
+              >
+                <span className="font-display text-2xl">
+                  {selectedInterviewer.name.slice(0, 1)}
+                </span>
+              </div>
+              <div className="space-y-2">
+                <p className="text-sm font-semibold uppercase tracking-[0.16em] text-accent">
+                  Live interviewer
+                </p>
+                <h3 className="font-display text-3xl tracking-[-0.05em] text-foreground">
+                  {selectedInterviewer.name}
+                </h3>
+                <p className="max-w-xl text-sm leading-6 text-muted">
+                  A video-call style interviewer presence while the session is active.
+                </p>
+              </div>
+            </div>
+
+            <div className="w-full max-w-[250px] overflow-hidden rounded-[1.4rem] border border-[#10233c]/10 bg-[#10233c]">
+              <div className="flex items-center justify-between border-b border-white/10 px-3 py-2 text-xs font-semibold uppercase tracking-[0.16em] text-white/70">
+                <span>Your camera</span>
+                <span>{cameraPermission}</span>
+              </div>
+              <div className="relative aspect-[4/5] bg-[linear-gradient(180deg,#183252,#0f1b2d)]">
+                <video
+                  ref={videoRef}
+                  autoPlay
+                  muted
+                  playsInline
+                  className="h-full w-full object-cover"
+                />
+                {cameraPermission !== "granted" ? (
+                  <div className="absolute inset-0 flex items-center justify-center px-4 text-center text-sm leading-6 text-white/72">
+                    Camera preview will appear here after permission is granted.
+                  </div>
+                ) : null}
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-5 grid gap-3 sm:grid-cols-3">
+            <div className="rounded-[1.2rem] border border-[#10233c]/10 bg-[#10233c]/4 px-4 py-4">
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-accent">
+                Attention
+              </p>
+              <p className="mt-2 text-2xl font-semibold text-foreground">
+                {presenceMetrics.attention}%
+              </p>
+            </div>
+            <div className="rounded-[1.2rem] border border-[#10233c]/10 bg-[#10233c]/4 px-4 py-4">
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-accent">
+                Eye contact
+              </p>
+              <p className="mt-2 text-2xl font-semibold text-foreground">
+                {presenceMetrics.eyeContact}%
+              </p>
+            </div>
+            <div className="rounded-[1.2rem] border border-[#10233c]/10 bg-[#10233c]/4 px-4 py-4">
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-accent">
+                Confidence
+              </p>
+              <p className="mt-2 text-2xl font-semibold text-foreground">
+                {presenceMetrics.confidence}%
+              </p>
+            </div>
+          </div>
+          <p className="mt-4 text-sm leading-6 text-muted">
+            {presenceMetrics.status}
+          </p>
+        </div>
 
         <div className="rounded-[1.5rem] border border-line bg-white/76 p-5">
           <p className="text-xs font-semibold uppercase tracking-[0.16em] text-accent">

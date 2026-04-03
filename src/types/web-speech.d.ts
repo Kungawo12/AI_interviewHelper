@@ -45,4 +45,17 @@ interface SpeechRecognitionConstructor {
 interface Window {
   SpeechRecognition?: SpeechRecognitionConstructor;
   webkitSpeechRecognition?: SpeechRecognitionConstructor;
+  FaceDetector?: FaceDetectorConstructor;
+}
+
+interface FaceDetectorFace {
+  boundingBox: DOMRectReadOnly;
+}
+
+interface FaceDetector {
+  detect(input: ImageBitmapSource): Promise<FaceDetectorFace[]>;
+}
+
+interface FaceDetectorConstructor {
+  new (options?: { fastMode?: boolean; maxDetectedFaces?: number }): FaceDetector;
 }

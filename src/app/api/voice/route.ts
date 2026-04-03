@@ -8,14 +8,14 @@ type VoiceRequest = {
 
 const voiceConfig = {
   female: {
-    voice: "nova",
+    voice: "marin",
     style:
-      "Speak like a calm, warm, professional interviewer during a high-quality remote interview. Sound natural, confident, and human.",
+      "Speak like a calm, warm, highly professional interviewer in a realistic video interview. Sound natural, polished, human, and reassuring.",
   },
   male: {
-    voice: "onyx",
+    voice: "cedar",
     style:
-      "Speak like a confident, composed, professional interviewer during a realistic job interview. Sound natural, measured, and human.",
+      "Speak like a confident, composed, highly professional interviewer in a realistic live interview. Sound natural, polished, human, and measured.",
   },
 } as const;
 
