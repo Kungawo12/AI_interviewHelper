@@ -4,6 +4,7 @@ import { FieldType, ResumeFormat, SessionStatus } from "@prisma/client";
 import { redirect } from "next/navigation";
 
 import { db } from "@/lib/db";
+import { generateInterviewQuestions } from "@/lib/interview-questions";
 import { parseResumeUpload } from "@/lib/resume";
 
 const fieldTypeMap: Record<string, FieldType> = {
@@ -91,6 +92,26 @@ export async function createInterviewSession(formData: FormData) {
         currentQuestion: 1,
         startedAt: new Date(),
       },
+    });
+
+    const generatedQuestions = generateInterviewQuestions({
+      field,
+      jobTitle,
+      companyName,
+      jobDescription,
+      resumeText: resumeContent,
+    });
+
+    await db.question.createMany({
+      data: generatedQuestions.map((question, index) => ({
+        sessionId: session.id,
+        questionText: question.questionText,
+        fingerprint: question.fingerprint,
+        category: question.category,
+        difficulty: question.difficulty,
+        sequenceNumber: index + 1,
+        sourceNotes: question.sourceNotes,
+      })),
     });
 
     redirect(`/interview/session/${session.id}`);

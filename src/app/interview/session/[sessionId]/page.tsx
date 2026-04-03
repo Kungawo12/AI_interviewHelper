@@ -1,18 +1,9 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { InterviewProcess } from "@/components/interview-process";
 import { Reveal } from "@/components/reveal";
 import { db } from "@/lib/db";
-
-function buildPreviewQuestions(jobTitle: string, companyName?: string | null) {
-  const companyContext = companyName ? ` at ${companyName}` : "";
-
-  return [
-    `Tell me about yourself and why you want this ${jobTitle} role${companyContext}.`,
-    `Which skills from your background best prepare you for this ${jobTitle} position?`,
-    `Describe a challenge you handled that shows you can succeed in this role.`,
-  ];
-}
 
 function SessionLoadError() {
   return (
@@ -69,6 +60,11 @@ async function loadInterviewSession(sessionId: string) {
       user: true,
       interviewProfile: true,
       resume: true,
+      questions: {
+        orderBy: {
+          sequenceNumber: "asc",
+        },
+      },
     },
   });
 }
@@ -92,11 +88,6 @@ export default async function InterviewSessionPage({
     notFound();
   }
 
-  const previewQuestions = buildPreviewQuestions(
-    session.interviewProfile.jobTitle,
-    session.interviewProfile.companyName,
-  );
-
   return (
     <main className="relative overflow-hidden px-5 py-8 sm:px-8 lg:px-12">
       <div className="pointer-events-none absolute left-[-6rem] top-16 h-56 w-56 rounded-full bg-[#ff8c61]/18 blur-3xl float-soft" />
@@ -109,94 +100,28 @@ export default async function InterviewSessionPage({
           </p>
           <div className="mt-5 space-y-3">
             <h1 className="max-w-3xl font-display text-4xl tracking-[-0.05em] sm:text-5xl">
-              Your interview setup is saved and ready for question generation.
+              Your interview session is ready.
             </h1>
             <p className="max-w-2xl text-sm leading-7 text-white/76 sm:text-base">
-              This preview confirms the saved role context and prepares the app
-              for the next stage: generating the 10-question practice interview.
+              Move through the generated questions, draft answers, and use this
+              page as the start of the real interview flow.
             </p>
           </div>
         </Reveal>
 
-        <div className="grid gap-5 lg:grid-cols-[0.92fr_1.08fr]">
-          <Reveal delay={120} className="glass-card rounded-[1.65rem] border border-white/60 p-5">
-            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-accent">
-              Saved context
-            </p>
-            <dl className="mt-4 space-y-4 text-sm leading-6">
-              <div>
-                <dt className="font-semibold text-foreground">Candidate</dt>
-                <dd className="text-muted">{session.user.name ?? "Candidate"}</dd>
-              </div>
-              <div>
-                <dt className="font-semibold text-foreground">Field</dt>
-                <dd className="text-muted">{session.interviewProfile.field}</dd>
-              </div>
-              <div>
-                <dt className="font-semibold text-foreground">Job title</dt>
-                <dd className="text-muted">{session.interviewProfile.jobTitle}</dd>
-              </div>
-              <div>
-                <dt className="font-semibold text-foreground">Company</dt>
-                <dd className="text-muted">
-                  {session.interviewProfile.companyName || "Not specified yet"}
-                </dd>
-              </div>
-              <div>
-                <dt className="font-semibold text-foreground">Session ID</dt>
-                <dd className="font-mono text-xs text-muted">{session.id}</dd>
-              </div>
-            </dl>
-          </Reveal>
-
-          <Reveal delay={200} className="glass-card rounded-[1.65rem] border border-white/60 p-5">
-            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-highlight">
-              Interview preview
-            </p>
-            <div className="mt-4 space-y-4">
-              <div className="rounded-[1.3rem] border border-line bg-white/72 px-4 py-4">
-                <p className="text-sm font-semibold text-foreground">
-                  Job specification
-                </p>
-                <p className="mt-2 text-sm leading-6 text-muted">
-                  {session.interviewProfile.jobDescription}
-                </p>
-              </div>
-
-              <div className="rounded-[1.3rem] border border-line bg-white/72 px-4 py-4">
-                <p className="text-sm font-semibold text-foreground">
-                  Question preview
-                </p>
-                <ul className="mt-3 space-y-3 text-sm leading-6 text-muted">
-                  {previewQuestions.map((question) => (
-                    <li key={question}>{question}</li>
-                  ))}
-                </ul>
-              </div>
-
-              <div className="rounded-[1.3rem] border border-[#ff8c61]/18 bg-[linear-gradient(180deg,rgba(255,124,73,0.08),rgba(255,255,255,0.74))] px-4 py-4">
-                <p className="text-sm font-semibold text-foreground">
-                  Resume captured
-                </p>
-                <p className="mt-2 text-sm leading-6 text-muted">
-                  {session.resume?.parsedText?.slice(0, 260) ??
-                    "No resume text saved."}
-                  {session.resume?.parsedText &&
-                  session.resume.parsedText.length > 260
-                    ? "..."
-                    : ""}
-                </p>
-              </div>
-            </div>
-          </Reveal>
-        </div>
+        <InterviewProcess
+          sessionId={session.id}
+          jobTitle={session.interviewProfile.jobTitle}
+          companyName={session.interviewProfile.companyName}
+          questions={session.questions}
+        />
 
         <Reveal delay={260} className="glass-card flex flex-col gap-3 rounded-[1.6rem] border border-white/60 p-5 sm:flex-row sm:items-center sm:justify-between">
           <div className="space-y-1">
-            <p className="text-sm font-semibold text-foreground">Next build step</p>
+            <p className="text-sm font-semibold text-foreground">Backend next step</p>
             <p className="text-sm leading-6 text-muted">
-              Generate all 10 questions, store them in the session, and begin
-              the answer-and-feedback experience.
+              Persist answers, add speech-to-text, and generate detailed
+              AI feedback after each question.
             </p>
           </div>
           <Link

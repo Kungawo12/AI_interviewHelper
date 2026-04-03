@@ -55,6 +55,31 @@ npm run dev
 
 Open `http://localhost:3000` in your browser.
 
+## Cloud Database And Deployment
+
+Use a hosted PostgreSQL database for production.
+
+Recommended setup:
+
+- App hosting: Vercel
+- Database: Supabase PostgreSQL
+- ORM: Prisma
+
+Production checklist:
+
+1. Create a Supabase project
+2. Copy the pooled PostgreSQL connection string into `DATABASE_URL`
+3. Add `DATABASE_URL` to Vercel project environment variables
+4. Run:
+
+```bash
+npm run db:migrate -- --name init
+```
+
+5. Redeploy on Vercel
+
+Your local database is only for development. The online app should point to the hosted PostgreSQL database.
+
 ## Next Milestones
 
 - onboarding form for job context and resume input

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 
 import { companySuggestions, interviewFields, jobTitleSuggestions } from "@/lib/interview-config";
 
@@ -79,38 +79,7 @@ function focusFirstMissingField(form: HTMLFormElement) {
 
 export function InterviewSetupForm({ error }: InterviewSetupFormProps) {
   const formRef = useRef<HTMLFormElement | null>(null);
-  const submitButtonRef = useRef<HTMLButtonElement | null>(null);
   const [warning, setWarning] = useState<string | null>(null);
-
-  useEffect(() => {
-    const form = formRef.current;
-    const submitButton = submitButtonRef.current;
-
-    if (!form || !submitButton) {
-      return;
-    }
-
-    let frameId = 0;
-
-    const syncSubmitState = () => {
-      submitButton.disabled = !formIsReady(form);
-    };
-
-    const scheduleSync = () => {
-      cancelAnimationFrame(frameId);
-      frameId = requestAnimationFrame(syncSubmitState);
-    };
-
-    syncSubmitState();
-    form.addEventListener("input", scheduleSync);
-    form.addEventListener("change", scheduleSync);
-
-    return () => {
-      cancelAnimationFrame(frameId);
-      form.removeEventListener("input", scheduleSync);
-      form.removeEventListener("change", scheduleSync);
-    };
-  }, []);
 
   return (
     <form
@@ -155,6 +124,7 @@ export function InterviewSetupForm({ error }: InterviewSetupFormProps) {
           <input
             type="text"
             name="candidateName"
+            autoComplete="name"
             placeholder="Tenzin Kunga"
             className="w-full rounded-[1.2rem] border border-line bg-white/84 px-4 py-3 text-sm text-foreground outline-none transition placeholder:text-muted focus:border-accent"
           />
@@ -165,6 +135,7 @@ export function InterviewSetupForm({ error }: InterviewSetupFormProps) {
           <input
             type="email"
             name="email"
+            autoComplete="email"
             placeholder="you@example.com"
             className="w-full rounded-[1.2rem] border border-line bg-white/84 px-4 py-3 text-sm text-foreground outline-none transition placeholder:text-muted focus:border-accent"
           />
@@ -211,7 +182,7 @@ export function InterviewSetupForm({ error }: InterviewSetupFormProps) {
             name="jobTitle"
             required
             list="job-title-suggestions"
-            autoComplete="off"
+            autoComplete="organization-title"
             placeholder="Start typing a role"
             className="w-full rounded-[1.2rem] border border-line bg-white/84 px-4 py-3 text-sm text-foreground outline-none transition placeholder:text-muted focus:border-accent"
           />
@@ -234,7 +205,7 @@ export function InterviewSetupForm({ error }: InterviewSetupFormProps) {
             name="companyName"
             required
             list="company-suggestions"
-            autoComplete="off"
+            autoComplete="organization"
             placeholder="Start typing a company"
             className="w-full rounded-[1.2rem] border border-line bg-white/84 px-4 py-3 text-sm text-foreground outline-none transition placeholder:text-muted focus:border-accent"
           />
@@ -309,9 +280,7 @@ export function InterviewSetupForm({ error }: InterviewSetupFormProps) {
           </div>
 
           <button
-            ref={submitButtonRef}
             type="button"
-            disabled
             onClick={() => {
               const form = formRef.current;
 
@@ -332,7 +301,7 @@ export function InterviewSetupForm({ error }: InterviewSetupFormProps) {
               setWarning(null);
               form.requestSubmit();
             }}
-            className="mt-5 w-full rounded-[1.2rem] bg-accent px-4 py-3 text-sm font-semibold text-white transition hover:bg-accent-strong disabled:cursor-not-allowed disabled:bg-[#f0b39b]"
+            className="mt-5 w-full rounded-[1.2rem] bg-accent px-4 py-3 text-sm font-semibold text-white transition hover:bg-accent-strong"
           >
             Save interview session
           </button>
