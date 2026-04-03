@@ -62,7 +62,7 @@ export async function POST(request: Request) {
       voice: selected.voice,
       input: text,
       instructions,
-      response_format: "wav",
+      response_format: "mp3",
       speed: 0.96,
     }),
   });
@@ -81,7 +81,7 @@ export async function POST(request: Request) {
     status: 200,
     headers: {
       "Content-Type": "audio/mpeg",
-      "Cache-Control": "no-store",
+      "Cache-Control": "no-store, max-age=0",
     },
   });
 }
