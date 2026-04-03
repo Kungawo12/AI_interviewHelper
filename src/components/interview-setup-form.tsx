@@ -38,6 +38,45 @@ function formIsReady(form: HTMLFormElement) {
   );
 }
 
+function focusFirstMissingField(form: HTMLFormElement) {
+  const orderedNames = [
+    "jobTitle",
+    "companyName",
+    "jobDescription",
+    "resumeFile",
+    "resumeText",
+  ] as const;
+
+  for (const name of orderedNames) {
+    const field = form.elements.namedItem(name);
+
+    if (name === "resumeFile" || name === "resumeText") {
+      const resumeText = valueOf(form, "resumeText");
+      const resumeFileField = form.elements.namedItem("resumeFile");
+      const hasResumeFile =
+        resumeFileField instanceof HTMLInputElement &&
+        (resumeFileField.files?.length ?? 0) > 0;
+
+      if (!resumeText && !hasResumeFile) {
+        if (resumeFileField instanceof HTMLElement) {
+          resumeFileField.focus();
+        }
+        return;
+      }
+
+      continue;
+    }
+
+    if (
+      (field instanceof HTMLInputElement || field instanceof HTMLTextAreaElement) &&
+      !field.value.trim()
+    ) {
+      field.focus();
+      return;
+    }
+  }
+}
+
 export function InterviewSetupForm({ error }: InterviewSetupFormProps) {
   const formRef = useRef<HTMLFormElement | null>(null);
   const submitButtonRef = useRef<HTMLButtonElement | null>(null);
@@ -87,6 +126,9 @@ export function InterviewSetupForm({ error }: InterviewSetupFormProps) {
           setWarning(
             "Complete the required fields before continuing. Job title, company name, job description, and a resume are required.",
           );
+          if (form) {
+            focusFirstMissingField(form);
+          }
           return;
         }
 
@@ -268,8 +310,28 @@ export function InterviewSetupForm({ error }: InterviewSetupFormProps) {
 
           <button
             ref={submitButtonRef}
-            type="submit"
+            type="button"
             disabled
+            onClick={() => {
+              const form = formRef.current;
+
+              if (!form) {
+                return;
+              }
+
+              const ready = formIsReady(form);
+
+              if (!ready) {
+                setWarning(
+                  "Complete the required fields before continuing. Job title, company name, job description, and a resume are required.",
+                );
+                focusFirstMissingField(form);
+                return;
+              }
+
+              setWarning(null);
+              form.requestSubmit();
+            }}
             className="mt-5 w-full rounded-[1.2rem] bg-accent px-4 py-3 text-sm font-semibold text-white transition hover:bg-accent-strong disabled:cursor-not-allowed disabled:bg-[#f0b39b]"
           >
             Save interview session
