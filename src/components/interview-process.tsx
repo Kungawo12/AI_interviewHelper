@@ -127,6 +127,8 @@ export function InterviewProcess({
   const [selectedInterviewerId, setSelectedInterviewerId] =
     useState<InterviewerOption["id"]>("female");
   const [hasDeliveredIntroduction, setHasDeliveredIntroduction] = useState(false);
+  const [hasSpeechRecognition, setHasSpeechRecognition] = useState(false);
+  const [hasSpeechSynthesis, setHasSpeechSynthesis] = useState(false);
   const recognitionRef = useRef<SpeechRecognition | null>(null);
   const recognitionQuestionIdRef = useRef<string | null>(null);
   const speechTimeoutRef = useRef<number | null>(null);
@@ -145,11 +147,14 @@ export function InterviewProcess({
     return Math.round(((currentIndex + 1) / questions.length) * 100);
   }, [currentIndex, isComplete, questions.length]);
 
-  const hasSpeechRecognition = browserSupportsSpeechRecognition();
-  const hasSpeechSynthesis = browserSupportsSpeechSynthesis();
   const selectedInterviewer =
     interviewerOptions.find((option) => option.id === selectedInterviewerId) ??
     interviewerOptions[0];
+
+  useEffect(() => {
+    setHasSpeechRecognition(browserSupportsSpeechRecognition());
+    setHasSpeechSynthesis(browserSupportsSpeechSynthesis());
+  }, []);
 
   useEffect(() => {
     if (!hasStarted || isComplete) {
@@ -200,14 +205,21 @@ export function InterviewProcess({
     }
 
     const syncVoices = () => {
-      setAvailableVoices(window.speechSynthesis.getVoices());
+      try {
+        setAvailableVoices(window.speechSynthesis?.getVoices?.() ?? []);
+      } catch {
+        setAvailableVoices([]);
+      }
     };
 
     syncVoices();
-    window.speechSynthesis.addEventListener("voiceschanged", syncVoices);
+
+    const synthesis = window.speechSynthesis;
+    const previousHandler = synthesis.onvoiceschanged;
+    synthesis.onvoiceschanged = syncVoices;
 
     return () => {
-      window.speechSynthesis.removeEventListener("voiceschanged", syncVoices);
+      synthesis.onvoiceschanged = previousHandler;
     };
   }, [hasSpeechSynthesis]);
 
@@ -236,37 +248,44 @@ export function InterviewProcess({
       return;
     }
 
-    stopSpeaking();
+    try {
+      stopSpeaking();
 
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.rate = 0.95;
-    utterance.pitch = 1;
-    const chosenVoice = pickInterviewerVoice(availableVoices, selectedInterviewer);
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.rate = 0.95;
+      utterance.pitch = 1;
+      const chosenVoice = pickInterviewerVoice(availableVoices, selectedInterviewer);
 
-    if (chosenVoice) {
-      utterance.voice = chosenVoice;
-      utterance.lang = chosenVoice.lang;
-    } else {
-      utterance.lang = "en-US";
+      if (chosenVoice) {
+        utterance.voice = chosenVoice;
+        utterance.lang = chosenVoice.lang;
+      } else {
+        utterance.lang = "en-US";
+      }
+
+      utterance.onstart = () => {
+        setVoiceState("speaking");
+        setVoiceNotice(notice);
+      };
+      utterance.onend = () => {
+        setVoiceState("idle");
+        setVoiceNotice("Question finished. You can answer by voice or by typing.");
+      };
+      utterance.onerror = () => {
+        setVoiceState("idle");
+        setVoiceNotice("Voice playback could not finish, so you can read the question on screen.");
+      };
+
+      // Let the DOM settle a touch so speech starts more reliably after navigation.
+      speechTimeoutRef.current = window.setTimeout(() => {
+        window.speechSynthesis.speak(utterance);
+      }, 120);
+    } catch {
+      setVoiceState("idle");
+      setVoiceNotice(
+        "This browser could not start interviewer voice playback, so you can continue with on-screen questions.",
+      );
     }
-
-    utterance.onstart = () => {
-      setVoiceState("speaking");
-      setVoiceNotice(notice);
-    };
-    utterance.onend = () => {
-      setVoiceState("idle");
-      setVoiceNotice("Question finished. You can answer by voice or by typing.");
-    };
-    utterance.onerror = () => {
-      setVoiceState("idle");
-      setVoiceNotice("Voice playback could not finish, so you can read the question on screen.");
-    };
-
-    // Let the DOM settle a touch so speech starts more reliably after navigation.
-    speechTimeoutRef.current = window.setTimeout(() => {
-      window.speechSynthesis.speak(utterance);
-    }, 120);
   }
 
   function speakQuestion(questionText: string) {
@@ -348,61 +367,68 @@ export function InterviewProcess({
     stopSpeaking();
     stopListening();
 
-    const recognition = new Recognition();
-    recognition.lang = "en-US";
-    recognition.continuous = true;
-    recognition.interimResults = true;
-    recognitionQuestionIdRef.current = currentQuestion.id;
+    try {
+      const recognition = new Recognition();
+      recognition.lang = "en-US";
+      recognition.continuous = true;
+      recognition.interimResults = true;
+      recognitionQuestionIdRef.current = currentQuestion.id;
 
-    recognition.onstart = () => {
-      setVoiceState("listening");
-      setVoiceNotice("Listening now. Speak naturally and your answer will appear below.");
-    };
+      recognition.onstart = () => {
+        setVoiceState("listening");
+        setVoiceNotice("Listening now. Speak naturally and your answer will appear below.");
+      };
 
-    recognition.onresult = (event) => {
-      let finalTranscript = "";
-      let liveTranscript = "";
+      recognition.onresult = (event) => {
+        let finalTranscript = "";
+        let liveTranscript = "";
 
-      for (let index = event.resultIndex; index < event.results.length; index += 1) {
-        const phrase = event.results[index][0]?.transcript ?? "";
+        for (let index = event.resultIndex; index < event.results.length; index += 1) {
+          const phrase = event.results[index][0]?.transcript ?? "";
 
-        if (event.results[index].isFinal) {
-          finalTranscript += `${phrase} `;
-        } else {
-          liveTranscript += phrase;
+          if (event.results[index].isFinal) {
+            finalTranscript += `${phrase} `;
+          } else {
+            liveTranscript += phrase;
+          }
         }
-      }
 
-      if (finalTranscript) {
-        setDraftAnswers((existing) => {
-          const base = existing[currentQuestion.id] ?? "";
-          return {
-            ...existing,
-            [currentQuestion.id]: `${base}${base ? " " : ""}${finalTranscript.trim()}`.trim(),
-          };
-        });
-      }
+        if (finalTranscript) {
+          setDraftAnswers((existing) => {
+            const base = existing[currentQuestion.id] ?? "";
+            return {
+              ...existing,
+              [currentQuestion.id]: `${base}${base ? " " : ""}${finalTranscript.trim()}`.trim(),
+            };
+          });
+        }
 
-      setInterimTranscript(liveTranscript.trim());
-    };
+        setInterimTranscript(liveTranscript.trim());
+      };
 
-    recognition.onerror = () => {
+      recognition.onerror = () => {
+        setVoiceState("idle");
+        setVoiceNotice(
+          "Speech recognition stopped unexpectedly. You can start listening again or continue typing.",
+        );
+        setInterimTranscript("");
+      };
+
+      recognition.onend = () => {
+        recognitionRef.current = null;
+        recognitionQuestionIdRef.current = null;
+        setInterimTranscript("");
+        setVoiceState((previous) => (previous === "listening" ? "idle" : previous));
+      };
+
+      recognitionRef.current = recognition;
+      recognition.start();
+    } catch {
       setVoiceState("idle");
       setVoiceNotice(
-        "Speech recognition stopped unexpectedly. You can start listening again or continue typing.",
+        "This browser could not start speech recognition, so you can continue typing your answer.",
       );
-      setInterimTranscript("");
-    };
-
-    recognition.onend = () => {
-      recognitionRef.current = null;
-      recognitionQuestionIdRef.current = null;
-      setInterimTranscript("");
-      setVoiceState((previous) => (previous === "listening" ? "idle" : previous));
-    };
-
-    recognitionRef.current = recognition;
-    recognition.start();
+    }
   }
 
   async function handleStartInterview() {
