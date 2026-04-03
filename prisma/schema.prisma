@@ -1,0 +1,179 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum FieldType {
+  TECHNOLOGY
+  SERVICE
+  MEDICAL
+  EDUCATION
+  OTHER
+}
+
+enum SessionStatus {
+  CREATED
+  IN_PROGRESS
+  COMPLETED
+  ABANDONED
+}
+
+enum QuestionCategory {
+  TECHNICAL
+  BEHAVIORAL
+  SITUATIONAL
+  ROLE_SPECIFIC
+  COMPANY_FIT
+  COMMUNICATION
+}
+
+enum DifficultyLevel {
+  EASY
+  MEDIUM
+  HARD
+}
+
+enum ResumeFormat {
+  TEXT
+  PDF
+  DOC
+  DOCX
+  OTHER
+}
+
+model User {
+  id                String             @id @default(cuid())
+  email             String?            @unique
+  name              String?
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  interviewProfiles InterviewProfile[]
+  resumes           Resume[]
+  interviewSessions InterviewSession[]
+  questionHistory   QuestionHistory[]
+}
+
+model InterviewProfile {
+  id                String             @id @default(cuid())
+  userId            String
+  field             FieldType
+  jobTitle          String
+  companyName       String?
+  jobDescription    String             @db.Text
+  experienceLevel   String?
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  user              User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  interviewSessions InterviewSession[]
+
+  @@index([userId, field, jobTitle])
+}
+
+model Resume {
+  id                String             @id @default(cuid())
+  userId            String
+  fileName          String?
+  format            ResumeFormat       @default(TEXT)
+  storageUrl        String?
+  rawText           String?            @db.Text
+  parsedText        String?            @db.Text
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  user              User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  interviewSessions InterviewSession[]
+
+  @@index([userId, createdAt])
+}
+
+model InterviewSession {
+  id                 String            @id @default(cuid())
+  userId             String
+  interviewProfileId String
+  resumeId           String?
+  status             SessionStatus     @default(CREATED)
+  totalQuestions     Int               @default(10)
+  currentQuestion    Int               @default(1)
+  overallScore       Int?
+  finalSummary       String?           @db.Text
+  improvementPlan    String?           @db.Text
+  startedAt          DateTime?
+  completedAt        DateTime?
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+  user               User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  interviewProfile   InterviewProfile  @relation(fields: [interviewProfileId], references: [id], onDelete: Cascade)
+  resume             Resume?           @relation(fields: [resumeId], references: [id], onDelete: SetNull)
+  questions          Question[]
+
+  @@index([userId, status, createdAt])
+  @@index([interviewProfileId])
+}
+
+model Question {
+  id                 String            @id @default(cuid())
+  sessionId          String
+  questionText       String            @db.Text
+  fingerprint        String
+  category           QuestionCategory
+  difficulty         DifficultyLevel   @default(MEDIUM)
+  sequenceNumber     Int
+  sourceNotes        String?           @db.Text
+  repeatOfQuestionId String?
+  createdAt          DateTime          @default(now())
+  session            InterviewSession  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  repeatOfQuestion   Question?         @relation("RepeatedQuestion", fields: [repeatOfQuestionId], references: [id], onDelete: SetNull)
+  repeatedQuestions  Question[]        @relation("RepeatedQuestion")
+  answer             Answer?
+
+  @@unique([sessionId, sequenceNumber])
+  @@index([sessionId, category])
+  @@index([fingerprint])
+}
+
+model Answer {
+  id              String    @id @default(cuid())
+  questionId      String    @unique
+  transcript      String?   @db.Text
+  audioUrl        String?
+  durationSeconds Int?
+  submittedAt     DateTime  @default(now())
+  answerQuality   Int?
+  question        Question  @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  feedback        Feedback?
+}
+
+model Feedback {
+  id                     String   @id @default(cuid())
+  answerId               String   @unique
+  score                  Int
+  strengths              String   @db.Text
+  weaknesses             String   @db.Text
+  improvementSuggestions String   @db.Text
+  idealAnswer            String?  @db.Text
+  resourceLinks          Json?
+  createdAt              DateTime @default(now())
+  answer                 Answer   @relation(fields: [answerId], references: [id], onDelete: Cascade)
+}
+
+model QuestionHistory {
+  id          String           @id @default(cuid())
+  userId      String
+  fingerprint String
+  field       FieldType
+  jobTitle    String
+  category    QuestionCategory
+  companyName String?
+  lastAskedAt DateTime         @default(now())
+  timesAsked  Int              @default(1)
+  timesMissed Int              @default(0)
+  lastScore   Int?
+  user        User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, fingerprint, jobTitle])
+  @@index([userId, lastAskedAt])
+  @@index([field, jobTitle, category])
+}
