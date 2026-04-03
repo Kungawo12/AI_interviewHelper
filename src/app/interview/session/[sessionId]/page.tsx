@@ -96,15 +96,15 @@ export default async function InterviewSessionPage({
       <section className="mx-auto flex max-w-6xl flex-col gap-6 rounded-[2rem] border border-white/50 bg-white/48 p-6 shadow-[0_28px_90px_rgba(19,34,56,0.08)] backdrop-blur sm:p-8 lg:p-10">
         <Reveal className="rounded-[1.9rem] bg-[#10233c] p-6 text-white shadow-[0_26px_70px_rgba(16,35,60,0.3)] sm:p-8">
           <p className="w-fit rounded-full bg-white/10 px-4 py-2 text-sm font-semibold uppercase tracking-[0.18em] text-white/86">
-            Interview session created
+            Interview ready
           </p>
           <div className="mt-5 space-y-3">
             <h1 className="max-w-3xl font-display text-4xl tracking-[-0.05em] sm:text-5xl">
-              Your interview session is ready.
+              Step in when you are ready.
             </h1>
             <p className="max-w-2xl text-sm leading-7 text-white/76 sm:text-base">
-              Move through the generated questions, draft answers, and use this
-              page as the start of the real interview flow.
+              Start the session, answer each question one at a time, and let the
+              timer run through the full interview until the final question is done.
             </p>
           </div>
         </Reveal>
@@ -116,21 +116,14 @@ export default async function InterviewSessionPage({
           questions={session.questions}
         />
 
-        <Reveal delay={260} className="glass-card flex flex-col gap-3 rounded-[1.6rem] border border-white/60 p-5 sm:flex-row sm:items-center sm:justify-between">
-          <div className="space-y-1">
-            <p className="text-sm font-semibold text-foreground">Backend next step</p>
-            <p className="text-sm leading-6 text-muted">
-              Persist answers, add speech-to-text, and generate detailed
-              AI feedback after each question.
-            </p>
-          </div>
+        <div className="flex justify-start">
           <Link
             href="/"
             className="inline-flex items-center justify-center rounded-[1.2rem] bg-accent px-4 py-3 text-sm font-semibold text-white transition hover:bg-accent-strong"
           >
             Back to setup
           </Link>
-        </Reveal>
+        </div>
       </section>
     </main>
   );
