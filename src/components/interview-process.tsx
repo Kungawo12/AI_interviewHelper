@@ -22,22 +22,25 @@ type VoiceState = "idle" | "speaking" | "listening";
 type InterviewerOption = {
   id: "female" | "male";
   name: string;
-  label: string;
   preference: string[];
+  fallbackRate: number;
+  fallbackPitch: number;
 };
 
 const interviewerOptions: InterviewerOption[] = [
   {
     id: "female",
     name: "Elena",
-    label: "Female interviewer",
     preference: ["female", "woman", "samantha", "victoria", "karen", "zira", "ava", "aria"],
+    fallbackRate: 0.98,
+    fallbackPitch: 1.12,
   },
   {
     id: "male",
     name: "Marcus",
-    label: "Male interviewer",
-    preference: ["male", "man", "david", "mark", "alex", "daniel", "fred", "tom"],
+    preference: ["male", "man", "david", "mark", "alex", "daniel", "fred", "tom", "google uk english male", "microsoft david"],
+    fallbackRate: 0.9,
+    fallbackPitch: 0.82,
   },
 ];
 
@@ -80,7 +83,22 @@ function pickInterviewerVoice(
     return interviewer.preference.some((hint) => normalized.includes(hint));
   });
 
-  return matched ?? pool[0] ?? null;
+  if (matched) {
+    return matched;
+  }
+
+  if (interviewer.id === "male") {
+    const lessLikelyFemale = pool.find((voice) => {
+      const normalized = `${voice.name} ${voice.voiceURI}`.toLowerCase();
+      return !["female", "woman", "samantha", "victoria", "zira", "karen", "ava", "aria"].some((hint) =>
+        normalized.includes(hint),
+      );
+    });
+
+    return lessLikelyFemale ?? pool[0] ?? null;
+  }
+
+  return pool[0] ?? null;
 }
 
 function buildInterviewIntro({
@@ -252,8 +270,8 @@ export function InterviewProcess({
       stopSpeaking();
 
       const utterance = new SpeechSynthesisUtterance(text);
-      utterance.rate = 0.95;
-      utterance.pitch = 1;
+      utterance.rate = selectedInterviewer.fallbackRate;
+      utterance.pitch = selectedInterviewer.fallbackPitch;
       const chosenVoice = pickInterviewerVoice(availableVoices, selectedInterviewer);
 
       if (chosenVoice) {
@@ -500,9 +518,6 @@ export function InterviewProcess({
                     }`}
                   >
                     {option.name}
-                    <span className="ml-2 text-xs uppercase tracking-[0.14em] opacity-80">
-                      {option.id}
-                    </span>
                   </button>
                 );
               })}
