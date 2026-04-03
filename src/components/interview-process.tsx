@@ -150,6 +150,7 @@ export function InterviewProcess({
   const recognitionRef = useRef<SpeechRecognition | null>(null);
   const recognitionQuestionIdRef = useRef<string | null>(null);
   const speechTimeoutRef = useRef<number | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
   const currentQuestion = questions[currentIndex];
   const currentAnswer = draftAnswers[currentQuestion.id] ?? "";
@@ -196,6 +197,8 @@ export function InterviewProcess({
         window.clearTimeout(speechTimeoutRef.current);
       }
 
+      audioRef.current?.pause();
+      audioRef.current = null;
       recognitionRef.current?.stop();
     };
   }, []);
@@ -242,6 +245,11 @@ export function InterviewProcess({
   }, [hasSpeechSynthesis]);
 
   function stopSpeaking() {
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current = null;
+    }
+
     if (!hasSpeechSynthesis) {
       return;
     }
@@ -258,7 +266,57 @@ export function InterviewProcess({
     }
   }
 
-  function speakText(text: string, notice: string) {
+  async function speakText(text: string, notice: string, mode: "intro" | "question") {
+    stopSpeaking();
+
+    try {
+      const response = await fetch("/api/voice", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          text,
+          interviewerId: selectedInterviewer.id,
+          mode,
+        }),
+      });
+
+      if (response.ok) {
+        const blob = await response.blob();
+        const audioUrl = URL.createObjectURL(blob);
+        const audio = new Audio(audioUrl);
+        audioRef.current = audio;
+
+        audio.onplay = () => {
+          setVoiceState("speaking");
+          setVoiceNotice(notice);
+        };
+
+        audio.onended = () => {
+          URL.revokeObjectURL(audioUrl);
+          audioRef.current = null;
+          setVoiceState("idle");
+          setVoiceNotice("Question finished. You can answer by voice or by typing.");
+        };
+
+        audio.onerror = () => {
+          URL.revokeObjectURL(audioUrl);
+          audioRef.current = null;
+          fallbackToBrowserSpeech(text, notice);
+        };
+
+        await audio.play();
+        return;
+      }
+    } catch {
+      // Browser fallback below.
+    }
+
+    fallbackToBrowserSpeech(text, notice);
+  }
+
+  function fallbackToBrowserSpeech(text: string, notice: string) {
     if (!hasSpeechSynthesis) {
       setVoiceNotice(
         "Question audio is not available in this browser, but you can still continue with typed answers.",
@@ -307,9 +365,10 @@ export function InterviewProcess({
   }
 
   function speakQuestion(questionText: string) {
-    speakText(
+    void speakText(
       questionText,
       `${selectedInterviewer.name} is asking the next interview question.`,
+      "question",
     );
   }
 
@@ -321,9 +380,10 @@ export function InterviewProcess({
       questionCount: questions.length,
     });
 
-    speakText(
+    void speakText(
       `${intro} First question. ${questionText}`,
       `${selectedInterviewer.name} is introducing the interview and setting expectations.`,
+      "intro",
     );
   }
 
@@ -454,6 +514,19 @@ export function InterviewProcess({
     setHasDeliveredIntroduction(true);
     setHasStarted(true);
     speakIntroductionAndQuestion(questions[0].questionText);
+  }
+
+  function resetToInterviewStart() {
+    stopListening();
+    stopSpeaking();
+    setHasStarted(false);
+    setHasDeliveredIntroduction(false);
+    setIsComplete(false);
+    setElapsedSeconds(0);
+    setCurrentIndex(0);
+    setInterimTranscript("");
+    setVoiceState("idle");
+    setVoiceNotice(null);
   }
 
   function goToNextQuestion() {
@@ -652,6 +725,16 @@ export function InterviewProcess({
           <div className="rounded-[1.2rem] bg-[#10233c] px-4 py-3 text-sm font-semibold text-white">
             Timer {formatDuration(elapsedSeconds)}
           </div>
+        </div>
+
+        <div className="flex flex-wrap gap-3">
+          <button
+            type="button"
+            onClick={resetToInterviewStart}
+            className="rounded-[1.1rem] border border-line bg-white/84 px-4 py-3 text-sm font-semibold text-foreground transition hover:bg-white"
+          >
+            Back to interview start
+          </button>
         </div>
 
         <div className="h-2 rounded-full bg-[#10233c]/10">

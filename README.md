@@ -35,6 +35,12 @@ npm install
 cp .env.example .env
 ```
 
+Add your OpenAI key as well if you want the real interviewer voice:
+
+```env
+OPENAI_API_KEY=your-openai-api-key
+```
+
 3. Generate the Prisma client:
 
 ```bash
@@ -69,7 +75,7 @@ Production checklist:
 
 1. Create a Supabase project
 2. Copy the pooled PostgreSQL connection string into `DATABASE_URL`
-3. Add `DATABASE_URL` to Vercel project environment variables
+3. Add `DATABASE_URL`, `DIRECT_URL`, and `OPENAI_API_KEY` to Vercel project environment variables
 4. Run:
 
 ```bash
