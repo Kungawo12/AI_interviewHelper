@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 import { InterviewScene } from "@/components/interview-scene";
 import { InterviewSetupForm } from "@/components/interview-setup-form";
 import {
@@ -9,6 +11,8 @@ const errorMessages: Record<string, string> = {
     "Please complete the required fields and provide a resume as PDF, TXT, or pasted text before creating an interview session.",
   "save-failed":
     "We could not save the interview setup. In deployment, this usually means the hosted PostgreSQL connection is missing or migrations have not been run yet.",
+  "duplicate-session":
+    "This interview setup already exists in the database for you. Open the saved session instead of creating a duplicate.",
   "unsupported-resume-format":
     "Resume upload currently supports PDF and TXT files. You can also paste resume text directly.",
 };
@@ -16,10 +20,11 @@ const errorMessages: Record<string, string> = {
 export default async function Home({
   searchParams,
 }: {
-  searchParams?: Promise<{ error?: string }>;
+  searchParams?: Promise<{ error?: string; sessionId?: string }>;
 }) {
   const params = searchParams ? await searchParams : undefined;
   const error = params?.error ? errorMessages[params.error] : null;
+  const existingSessionId = params?.sessionId || null;
 
   return (
     <main className="relative overflow-hidden px-5 py-6 sm:px-8 lg:px-12">
@@ -79,6 +84,20 @@ export default async function Home({
           </div>
 
           <InterviewSetupForm error={error} />
+
+          {params?.error === "duplicate-session" && existingSessionId ? (
+            <div className="mt-4 flex flex-wrap items-center gap-3 rounded-[1.4rem] border border-[#10233c]/10 bg-[#10233c]/6 px-4 py-4 text-sm text-foreground">
+              <span>
+                Your previous session is still available.
+              </span>
+              <Link
+                href={`/interview/session/${existingSessionId}`}
+                className="inline-flex items-center justify-center rounded-xl bg-[#10233c] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#183252]"
+              >
+                Open saved session
+              </Link>
+            </div>
+          ) : null}
         </div>
       </section>
     </main>

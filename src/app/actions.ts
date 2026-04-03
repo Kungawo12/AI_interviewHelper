@@ -19,6 +19,10 @@ function readValue(formData: FormData, key: string) {
   return formData.get(key)?.toString().trim() ?? "";
 }
 
+function normalizeForComparison(value: string | null | undefined) {
+  return value?.trim() || "";
+}
+
 export async function createInterviewSession(formData: FormData) {
   const fieldValue = readValue(formData, "field");
   const field = fieldTypeMap[fieldValue];
@@ -51,6 +55,47 @@ export async function createInterviewSession(formData: FormData) {
   let sessionId: string | null = null;
 
   try {
+    const duplicateIdentity =
+      email.length > 0
+        ? { user: { email } }
+        : candidateName.length > 0
+          ? { user: { email: null, name: candidateName } }
+          : null;
+
+    const duplicateResumeText = normalizeForComparison(
+      resumeContent || normalizedPastedResumeText,
+    );
+
+    if (duplicateIdentity && duplicateResumeText) {
+      const existingSession = await db.interviewSession.findFirst({
+        where: {
+          ...duplicateIdentity,
+          interviewProfile: {
+            field,
+            jobTitle,
+            companyName,
+            jobDescription,
+          },
+          resume: {
+            OR: [
+              { parsedText: duplicateResumeText },
+              { rawText: duplicateResumeText },
+            ],
+          },
+        },
+        orderBy: { createdAt: "desc" },
+      });
+
+      if (existingSession) {
+        const params = new URLSearchParams({
+          error: "duplicate-session",
+          sessionId: existingSession.id,
+        });
+
+        redirect(`/?${params.toString()}`);
+      }
+    }
+
     const user =
       email.length > 0
         ? await db.user.upsert({
