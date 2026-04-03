@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 type InterviewQuestion = {
   id: string;
@@ -17,6 +17,9 @@ type InterviewProcessProps = {
   questions: InterviewQuestion[];
 };
 
+type PermissionState = "idle" | "granted" | "denied";
+type VoiceState = "idle" | "speaking" | "listening";
+
 function formatDuration(totalSeconds: number) {
   const minutes = Math.floor(totalSeconds / 60)
     .toString()
@@ -24,6 +27,22 @@ function formatDuration(totalSeconds: number) {
   const seconds = (totalSeconds % 60).toString().padStart(2, "0");
 
   return `${minutes}:${seconds}`;
+}
+
+function browserSupportsSpeechRecognition() {
+  if (typeof window === "undefined") {
+    return false;
+  }
+
+  return Boolean(window.SpeechRecognition || window.webkitSpeechRecognition);
+}
+
+function browserSupportsSpeechSynthesis() {
+  if (typeof window === "undefined") {
+    return false;
+  }
+
+  return "speechSynthesis" in window;
 }
 
 export function InterviewProcess({
@@ -37,8 +56,17 @@ export function InterviewProcess({
   const [currentIndex, setCurrentIndex] = useState(0);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [draftAnswers, setDraftAnswers] = useState<Record<string, string>>({});
+  const [microphonePermission, setMicrophonePermission] =
+    useState<PermissionState>("idle");
+  const [voiceState, setVoiceState] = useState<VoiceState>("idle");
+  const [voiceNotice, setVoiceNotice] = useState<string | null>(null);
+  const [interimTranscript, setInterimTranscript] = useState("");
+  const recognitionRef = useRef<SpeechRecognition | null>(null);
+  const recognitionQuestionIdRef = useRef<string | null>(null);
+  const speechTimeoutRef = useRef<number | null>(null);
 
   const currentQuestion = questions[currentIndex];
+  const currentAnswer = draftAnswers[currentQuestion.id] ?? "";
   const progress = useMemo(() => {
     if (!questions.length) {
       return 0;
@@ -51,6 +79,9 @@ export function InterviewProcess({
     return Math.round(((currentIndex + 1) / questions.length) * 100);
   }, [currentIndex, isComplete, questions.length]);
 
+  const hasSpeechRecognition = browserSupportsSpeechRecognition();
+  const hasSpeechSynthesis = browserSupportsSpeechSynthesis();
+
   useEffect(() => {
     if (!hasStarted || isComplete) {
       return;
@@ -62,6 +93,212 @@ export function InterviewProcess({
 
     return () => window.clearInterval(timer);
   }, [hasStarted, isComplete]);
+
+  useEffect(() => {
+    return () => {
+      if (typeof window !== "undefined" && "speechSynthesis" in window) {
+        window.speechSynthesis.cancel();
+      }
+
+      if (speechTimeoutRef.current) {
+        window.clearTimeout(speechTimeoutRef.current);
+      }
+
+      recognitionRef.current?.stop();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!hasStarted || isComplete) {
+      return;
+    }
+
+    speakQuestion(currentQuestion.questionText);
+    setInterimTranscript("");
+    stopListening();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentIndex, hasStarted, isComplete]);
+
+  function stopSpeaking() {
+    if (!hasSpeechSynthesis) {
+      return;
+    }
+
+    window.speechSynthesis.cancel();
+
+    if (speechTimeoutRef.current) {
+      window.clearTimeout(speechTimeoutRef.current);
+      speechTimeoutRef.current = null;
+    }
+
+    if (voiceState === "speaking") {
+      setVoiceState("idle");
+    }
+  }
+
+  function speakQuestion(questionText: string) {
+    if (!hasSpeechSynthesis) {
+      setVoiceNotice(
+        "Question audio is not available in this browser, but you can still continue with typed answers.",
+      );
+      return;
+    }
+
+    stopSpeaking();
+
+    const utterance = new SpeechSynthesisUtterance(questionText);
+    utterance.rate = 0.95;
+    utterance.pitch = 1;
+    utterance.onstart = () => {
+      setVoiceState("speaking");
+      setVoiceNotice("Your interview coach is reading the question aloud.");
+    };
+    utterance.onend = () => {
+      setVoiceState("idle");
+      setVoiceNotice("Question finished. You can answer by voice or by typing.");
+    };
+    utterance.onerror = () => {
+      setVoiceState("idle");
+      setVoiceNotice("Voice playback could not finish, so you can read the question on screen.");
+    };
+
+    // Let the DOM settle a touch so speech starts more reliably after navigation.
+    speechTimeoutRef.current = window.setTimeout(() => {
+      window.speechSynthesis.speak(utterance);
+    }, 120);
+  }
+
+  async function requestMicrophonePermission() {
+    if (typeof navigator === "undefined" || !navigator.mediaDevices?.getUserMedia) {
+      setMicrophonePermission("denied");
+      setVoiceNotice(
+        "Microphone access is not available in this browser. You can still practice with typed answers.",
+      );
+      return false;
+    }
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      stream.getTracks().forEach((track) => track.stop());
+      setMicrophonePermission("granted");
+      setVoiceNotice("Microphone is ready. You can answer by voice when the question starts.");
+      return true;
+    } catch {
+      setMicrophonePermission("denied");
+      setVoiceNotice(
+        "Microphone permission was denied. You can still continue by typing your answer.",
+      );
+      return false;
+    }
+  }
+
+  function stopListening() {
+    recognitionRef.current?.stop();
+    recognitionRef.current = null;
+    recognitionQuestionIdRef.current = null;
+    setInterimTranscript("");
+    setVoiceState((previous) => (previous === "listening" ? "idle" : previous));
+  }
+
+  function startListening() {
+    if (!hasSpeechRecognition) {
+      setVoiceNotice(
+        "Speech-to-text is not supported in this browser. You can keep using the answer box manually.",
+      );
+      return;
+    }
+
+    if (microphonePermission === "denied") {
+      setVoiceNotice("Microphone permission is still blocked, so speech-to-text cannot start.");
+      return;
+    }
+
+    const Recognition =
+      window.SpeechRecognition || window.webkitSpeechRecognition;
+
+    if (!Recognition) {
+      setVoiceNotice(
+        "Speech-to-text is not available in this browser. You can still type your answer.",
+      );
+      return;
+    }
+
+    stopSpeaking();
+    stopListening();
+
+    const recognition = new Recognition();
+    recognition.lang = "en-US";
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    recognitionQuestionIdRef.current = currentQuestion.id;
+
+    recognition.onstart = () => {
+      setVoiceState("listening");
+      setVoiceNotice("Listening now. Speak naturally and your answer will appear below.");
+    };
+
+    recognition.onresult = (event) => {
+      let finalTranscript = "";
+      let liveTranscript = "";
+
+      for (let index = event.resultIndex; index < event.results.length; index += 1) {
+        const phrase = event.results[index][0]?.transcript ?? "";
+
+        if (event.results[index].isFinal) {
+          finalTranscript += `${phrase} `;
+        } else {
+          liveTranscript += phrase;
+        }
+      }
+
+      if (finalTranscript) {
+        setDraftAnswers((existing) => {
+          const base = existing[currentQuestion.id] ?? "";
+          return {
+            ...existing,
+            [currentQuestion.id]: `${base}${base ? " " : ""}${finalTranscript.trim()}`.trim(),
+          };
+        });
+      }
+
+      setInterimTranscript(liveTranscript.trim());
+    };
+
+    recognition.onerror = () => {
+      setVoiceState("idle");
+      setVoiceNotice(
+        "Speech recognition stopped unexpectedly. You can start listening again or continue typing.",
+      );
+      setInterimTranscript("");
+    };
+
+    recognition.onend = () => {
+      recognitionRef.current = null;
+      recognitionQuestionIdRef.current = null;
+      setInterimTranscript("");
+      setVoiceState((previous) => (previous === "listening" ? "idle" : previous));
+    };
+
+    recognitionRef.current = recognition;
+    recognition.start();
+  }
+
+  async function handleStartInterview() {
+    await requestMicrophonePermission();
+    setHasStarted(true);
+  }
+
+  function goToNextQuestion() {
+    if (currentIndex === questions.length - 1) {
+      stopListening();
+      stopSpeaking();
+      setIsComplete(true);
+      setVoiceNotice("Interview finished. Great work staying through the full session.");
+      return;
+    }
+
+    setCurrentIndex((index) => index + 1);
+  }
 
   if (!questions.length) {
     return (
@@ -76,8 +313,6 @@ export function InterviewProcess({
     );
   }
 
-  const currentAnswer = draftAnswers[currentQuestion.id] ?? "";
-
   if (!hasStarted) {
     return (
       <section className="glass-card rounded-[1.9rem] border border-white/60 p-6 shadow-[0_24px_70px_rgba(19,34,56,0.08)] sm:p-8">
@@ -87,11 +322,12 @@ export function InterviewProcess({
               Start interview
             </p>
             <h2 className="font-display text-4xl tracking-[-0.06em] text-foreground sm:text-5xl">
-              Begin your live practice session.
+              Let&apos;s begin your practice round.
             </h2>
             <p className="max-w-2xl text-sm leading-7 text-muted sm:text-base">
-              When you start, the timer begins and stays active until all{" "}
-              {questions.length} questions are finished.
+              When you press start, the app will ask for microphone access, read
+              each question aloud, and keep the timer running until the final
+              question is completed.
             </p>
           </div>
 
@@ -123,15 +359,21 @@ export function InterviewProcess({
             </div>
           </div>
 
-          <div className="rounded-[1.5rem] border border-[#10233c]/10 bg-[#10233c]/5 p-5 text-sm leading-7 text-muted">
-            Answer each question one at a time. Your timer will keep running for
-            the full interview, and the session will end only after the final
-            question is completed.
+          <div className="grid gap-3 sm:grid-cols-3">
+            <div className="rounded-[1.35rem] border border-line bg-white/76 px-4 py-4 text-sm leading-6 text-muted">
+              Microphone permission is requested once when the interview starts.
+            </div>
+            <div className="rounded-[1.35rem] border border-line bg-white/76 px-4 py-4 text-sm leading-6 text-muted">
+              Speech-to-text fills the answer box while you speak, when supported.
+            </div>
+            <div className="rounded-[1.35rem] border border-line bg-white/76 px-4 py-4 text-sm leading-6 text-muted">
+              The interviewer voice reads each question so the practice feels more natural.
+            </div>
           </div>
 
           <button
             type="button"
-            onClick={() => setHasStarted(true)}
+            onClick={handleStartInterview}
             className="inline-flex items-center justify-center rounded-[1.2rem] bg-accent px-5 py-3 text-sm font-semibold text-white transition hover:bg-accent-strong"
           >
             Start interview
@@ -159,7 +401,7 @@ export function InterviewProcess({
               You finished the session.
             </h2>
             <p className="max-w-2xl text-sm leading-7 text-muted sm:text-base">
-              All {questions.length} questions were completed for {jobTitle}
+              You made it through all {questions.length} questions for {jobTitle}
               {companyName ? ` at ${companyName}` : ""}.
             </p>
           </div>
@@ -217,6 +459,26 @@ export function InterviewProcess({
           />
         </div>
 
+        <div className="flex flex-wrap gap-3">
+          <span className="rounded-full bg-[#10233c]/8 px-4 py-2 text-xs font-semibold uppercase tracking-[0.16em] text-foreground">
+            Microphone {microphonePermission}
+          </span>
+          <span className="rounded-full bg-[#ff8c61]/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.16em] text-accent-strong">
+            Voice {voiceState}
+          </span>
+          {!hasSpeechRecognition ? (
+            <span className="rounded-full bg-[#10233c]/8 px-4 py-2 text-xs font-semibold uppercase tracking-[0.16em] text-muted">
+              Speech-to-text unavailable in this browser
+            </span>
+          ) : null}
+        </div>
+
+        {voiceNotice ? (
+          <div className="rounded-[1.35rem] border border-[#10233c]/10 bg-[#10233c]/5 px-4 py-4 text-sm leading-7 text-muted">
+            {voiceNotice}
+          </div>
+        ) : null}
+
         <div className="rounded-[1.5rem] border border-line bg-white/76 p-5">
           <p className="text-xs font-semibold uppercase tracking-[0.16em] text-accent">
             {currentQuestion.category.toLowerCase()} ·{" "}
@@ -225,6 +487,32 @@ export function InterviewProcess({
           <h2 className="mt-3 font-display text-3xl tracking-[-0.05em] text-foreground sm:text-4xl">
             {currentQuestion.questionText}
           </h2>
+
+          <div className="mt-5 flex flex-wrap gap-3">
+            <button
+              type="button"
+              onClick={() => speakQuestion(currentQuestion.questionText)}
+              className="rounded-[1.1rem] border border-line bg-white/84 px-4 py-3 text-sm font-semibold text-foreground transition hover:bg-white"
+            >
+              Read question aloud
+            </button>
+            <button
+              type="button"
+              onClick={startListening}
+              disabled={!hasSpeechRecognition || voiceState === "listening"}
+              className="rounded-[1.1rem] bg-accent px-4 py-3 text-sm font-semibold text-white transition hover:bg-accent-strong disabled:cursor-not-allowed disabled:bg-[#f0b39b]"
+            >
+              Start voice answer
+            </button>
+            <button
+              type="button"
+              onClick={stopListening}
+              disabled={voiceState !== "listening"}
+              className="rounded-[1.1rem] border border-line bg-white/84 px-4 py-3 text-sm font-semibold text-foreground transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              Stop listening
+            </button>
+          </div>
         </div>
 
         <div className="rounded-[1.5rem] border border-line bg-white/76 p-5">
@@ -238,15 +526,23 @@ export function InterviewProcess({
                 [currentQuestion.id]: event.target.value,
               }))
             }
-            placeholder="Your typed answer or speech transcript will appear here."
+            placeholder="Speak naturally or type your answer here."
             className="mt-3 w-full rounded-[1.2rem] border border-line bg-white/84 px-4 py-4 text-sm leading-7 text-foreground outline-none transition placeholder:text-muted focus:border-accent"
           />
+          {interimTranscript ? (
+            <p className="mt-3 text-sm leading-6 text-muted">
+              Listening now: <span className="text-foreground">{interimTranscript}</span>
+            </p>
+          ) : null}
         </div>
 
         <div className="flex flex-wrap gap-3">
           <button
             type="button"
-            onClick={() => setCurrentIndex((index) => Math.max(0, index - 1))}
+            onClick={() => {
+              stopListening();
+              setCurrentIndex((index) => Math.max(0, index - 1));
+            }}
             disabled={currentIndex === 0}
             className="rounded-[1.1rem] border border-line bg-white/84 px-4 py-3 text-sm font-semibold text-foreground transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-50"
           >
@@ -254,14 +550,7 @@ export function InterviewProcess({
           </button>
           <button
             type="button"
-            onClick={() => {
-              if (currentIndex === questions.length - 1) {
-                setIsComplete(true);
-                return;
-              }
-
-              setCurrentIndex((index) => index + 1);
-            }}
+            onClick={goToNextQuestion}
             className="rounded-[1.1rem] bg-accent px-4 py-3 text-sm font-semibold text-white transition hover:bg-accent-strong"
           >
             {currentIndex === questions.length - 1
