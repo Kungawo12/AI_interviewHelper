@@ -40,3 +40,29 @@ export const coachingSignals = [
   "Resume-grounded follow-ups",
   "Progress memory to reduce repeats",
 ] as const;
+
+export const jobTitleSuggestions = [
+  "Junior Software Engineer",
+  "Frontend Developer",
+  "Backend Developer",
+  "Product Designer",
+  "Data Analyst",
+  "Nursing Assistant",
+  "Medical Receptionist",
+  "Customer Service Representative",
+  "Housekeeping Supervisor",
+  "Elementary School Teacher",
+] as const;
+
+export const companySuggestions = [
+  "Google",
+  "Amazon",
+  "Microsoft",
+  "Airbnb",
+  "Tesla",
+  "Mayo Clinic",
+  "Cleveland Clinic",
+  "Marriott",
+  "Hilton",
+  "Target",
+] as const;

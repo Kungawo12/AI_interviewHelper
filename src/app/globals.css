@@ -84,6 +84,13 @@ a {
   animation: pulse-glow 6s ease-in-out infinite;
 }
 
+.soft-grid {
+  background-image:
+    linear-gradient(rgba(19, 34, 56, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(19, 34, 56, 0.04) 1px, transparent 1px);
+  background-size: 28px 28px;
+}
+
 @keyframes float-soft {
   0%,
   100% {
