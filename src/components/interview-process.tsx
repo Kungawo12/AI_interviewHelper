@@ -188,12 +188,12 @@ export function InterviewProcess({
     }
 
     if (!hasDeliveredIntroduction && currentIndex === 0) {
-      speakIntroductionAndQuestion(currentQuestion.questionText);
-      setHasDeliveredIntroduction(true);
       return;
     }
 
-    speakQuestion(currentQuestion.questionText);
+    if (currentIndex > 0 || hasDeliveredIntroduction) {
+      speakQuestion(currentQuestion.questionText);
+    }
     setInterimTranscript("");
     stopListening();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -433,8 +433,9 @@ export function InterviewProcess({
 
   async function handleStartInterview() {
     await requestMicrophonePermission();
-    setHasDeliveredIntroduction(false);
+    setHasDeliveredIntroduction(true);
     setHasStarted(true);
+    speakIntroductionAndQuestion(questions[0].questionText);
   }
 
   function goToNextQuestion() {
@@ -684,15 +685,6 @@ export function InterviewProcess({
               className="rounded-[1.1rem] border border-line bg-white/84 px-4 py-3 text-sm font-semibold text-foreground transition hover:bg-white"
             >
               Read question aloud
-            </button>
-            <button
-              type="button"
-              onClick={() =>
-                speakIntroductionAndQuestion(currentQuestion.questionText)
-              }
-              className="rounded-[1.1rem] border border-line bg-white/84 px-4 py-3 text-sm font-semibold text-foreground transition hover:bg-white"
-            >
-              Replay intro
             </button>
             <button
               type="button"
