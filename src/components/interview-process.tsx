@@ -19,13 +19,10 @@ type InterviewProcessProps = {
 
 type PermissionState = "idle" | "granted" | "denied";
 type VoiceState = "idle" | "speaking" | "listening";
-type VoiceEngine = "ai" | "browser" | "none";
+type VoiceEngine = "ai" | "unavailable" | "none";
 type InterviewerOption = {
   id: "female" | "male";
   name: string;
-  preference: string[];
-  fallbackRate: number;
-  fallbackPitch: number;
 };
 
 type PresenceMetrics = {
@@ -37,49 +34,86 @@ type PresenceMetrics = {
 
 function InterviewerFigure({
   interviewerId,
-  speaking,
+  state,
 }: {
   interviewerId: "female" | "male";
-  speaking: boolean;
+  state: VoiceState;
 }) {
   const isFemale = interviewerId === "female";
+  const isSpeaking = state === "speaking";
+  const isListening = state === "listening";
 
   return (
     <div
-      className={`relative h-48 w-40 overflow-hidden rounded-[2rem] border shadow-[0_20px_50px_rgba(16,35,60,0.16)] transition ${
-        speaking
-          ? "scale-[1.02] border-[#ff8c61]/35 bg-[linear-gradient(180deg,#fff2ec_0%,#ffe7dc_34%,#f4f7fb_100%)]"
-          : "border-[#10233c]/10 bg-[linear-gradient(180deg,#f8fbff_0%,#eef4fb_42%,#f4f7fb_100%)]"
+      className={`relative h-56 w-44 overflow-hidden rounded-[2rem] border shadow-[0_24px_60px_rgba(16,35,60,0.18)] transition ${
+        isSpeaking
+          ? "scale-[1.02] border-[#ff8c61]/40 bg-[linear-gradient(180deg,#fff2ec_0%,#ffe7dc_34%,#f4f7fb_100%)]"
+          : isListening
+            ? "scale-[1.01] border-[#1c7891]/30 bg-[linear-gradient(180deg,#eef8fb_0%,#e3f1f4_34%,#f4f7fb_100%)]"
+            : "border-[#10233c]/10 bg-[linear-gradient(180deg,#f8fbff_0%,#eef4fb_42%,#f4f7fb_100%)]"
       }`}
     >
-      <div className="absolute inset-x-0 top-0 h-20 bg-[radial-gradient(circle_at_top,rgba(255,140,97,0.18),transparent_68%)]" />
-      <div className="absolute left-1/2 top-6 h-16 w-16 -translate-x-1/2 rounded-full bg-[#f2c8ab]" />
       <div
-        className={`absolute left-1/2 top-3 -translate-x-1/2 rounded-full ${
-          isFemale ? "h-14 w-20 bg-[#2b221d]" : "h-12 w-18 bg-[#241c17]"
+        className={`absolute inset-x-0 top-0 h-24 ${
+          isSpeaking
+            ? "bg-[radial-gradient(circle_at_top,rgba(255,140,97,0.22),transparent_68%)]"
+            : isListening
+              ? "bg-[radial-gradient(circle_at_top,rgba(28,120,145,0.18),transparent_68%)]"
+              : "bg-[radial-gradient(circle_at_top,rgba(16,35,60,0.08),transparent_68%)]"
         }`}
       />
-      {isFemale ? (
-        <div className="absolute left-1/2 top-10 h-16 w-24 -translate-x-1/2 rounded-[999px] bg-[#2b221d]" />
-      ) : (
-        <div className="absolute left-1/2 top-11 h-8 w-12 -translate-x-1/2 rounded-b-[999px] bg-[#241c17]" />
-      )}
-      <div className="absolute left-1/2 top-[5.65rem] h-3 w-4 -translate-x-1/2 rounded-b-full bg-[#e2b292]" />
-      <div
-        className={`absolute left-1/2 top-28 h-28 w-32 -translate-x-1/2 rounded-t-[2.4rem] ${
-          isFemale ? "bg-[#dd6c4b]" : "bg-[#183252]"
-        }`}
-      />
-      <div className="absolute left-1/2 top-[7.1rem] h-6 w-10 -translate-x-1/2 rounded-b-[1rem] bg-[#f2c8ab]" />
-      <div className="absolute left-[4.25rem] top-[3.95rem] h-1.5 w-1.5 rounded-full bg-[#2a211c]" />
-      <div className="absolute right-[4.25rem] top-[3.95rem] h-1.5 w-1.5 rounded-full bg-[#2a211c]" />
-      <div className="absolute left-1/2 top-[4.8rem] h-1.5 w-5 -translate-x-1/2 rounded-full bg-[#ba876e]" />
+      <div className="absolute inset-x-0 top-7 flex justify-center">
+        <svg viewBox="0 0 220 300" className="h-48 w-40">
+          <ellipse cx="110" cy="268" rx="64" ry="18" fill="rgba(16,35,60,0.08)" />
+          <path
+            d={isFemale ? "M64 108 C72 62, 148 58, 156 110 L156 142 C146 134, 128 128, 110 128 C92 128, 74 134, 64 142 Z" : "M70 110 C78 70, 144 68, 150 110 L148 132 C136 126, 122 124, 110 124 C96 124, 82 126, 72 132 Z"}
+            fill={isFemale ? "#2e2521" : "#221b17"}
+          />
+          <ellipse cx="110" cy="125" rx="42" ry="48" fill="#f0c6a8" />
+          <path
+            d={isFemale ? "M72 116 C80 94, 140 94, 148 116 L148 88 C136 66, 84 66, 72 88 Z" : "M78 108 C88 86, 132 86, 142 108 L142 90 C132 72, 88 72, 78 90 Z"}
+            fill={isFemale ? "#2e2521" : "#221b17"}
+          />
+          <ellipse cx="95" cy="122" rx={isListening ? 6 : 5} ry={isSpeaking ? 4 : 5} fill="#2b231f" />
+          <ellipse cx="125" cy="122" rx={isListening ? 6 : 5} ry={isSpeaking ? 4 : 5} fill="#2b231f" />
+          <path d="M98 145 Q110 152 122 145" stroke="#b47b65" strokeWidth="3.5" fill="none" strokeLinecap="round" />
+          <path
+            d={
+              isSpeaking
+                ? "M98 158 Q110 174 122 158 Q110 184 98 158"
+                : isListening
+                  ? "M99 160 Q110 168 121 160"
+                  : "M101 160 Q110 164 119 160"
+            }
+            fill={isSpeaking ? "#9f5548" : "none"}
+            stroke={isSpeaking ? "#8f4d43" : "#8f4d43"}
+            strokeWidth="3"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+          <path d="M102 153 Q110 149 118 153" stroke="#d89c87" strokeWidth="2" fill="none" strokeLinecap="round" />
+          <rect x="98" y="170" width="24" height="16" rx="10" fill="#f0c6a8" />
+          <path
+            d={isFemale ? "M52 286 C60 224, 74 198, 110 198 C146 198, 160 224, 168 286 Z" : "M54 286 C62 228, 78 202, 110 202 C142 202, 158 228, 166 286 Z"}
+            fill={isFemale ? "#d96d55" : "#19334f"}
+          />
+          <path
+            d={isFemale ? "M86 198 L110 224 L134 198" : "M92 202 L110 224 L128 202"}
+            fill={isFemale ? "#f4ede6" : "#d9e6f3"}
+          />
+          <rect x="100" y="224" width="20" height="54" rx="10" fill={isFemale ? "#b65945" : "#10233c"} />
+        </svg>
+      </div>
       <div
         className={`absolute bottom-3 left-1/2 -translate-x-1/2 rounded-full px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] ${
-          speaking ? "bg-[#10233c] text-white" : "bg-white/80 text-[#10233c]"
+          isSpeaking
+            ? "bg-[#10233c] text-white"
+            : isListening
+              ? "bg-[#1c7891] text-white"
+              : "bg-white/80 text-[#10233c]"
         }`}
       >
-        {speaking ? "Speaking" : "Waiting"}
+        {isSpeaking ? "Speaking" : isListening ? "Listening" : "Waiting"}
       </div>
     </div>
   );
@@ -89,16 +123,10 @@ const interviewerOptions: InterviewerOption[] = [
   {
     id: "female",
     name: "Elena",
-    preference: ["female", "woman", "samantha", "victoria", "karen", "zira", "ava", "aria"],
-    fallbackRate: 0.98,
-    fallbackPitch: 1.12,
   },
   {
     id: "male",
     name: "Marcus",
-    preference: ["male", "man", "david", "mark", "alex", "daniel", "fred", "tom", "google uk english male", "microsoft david"],
-    fallbackRate: 0.9,
-    fallbackPitch: 0.82,
   },
 ];
 
@@ -117,46 +145,6 @@ function browserSupportsSpeechRecognition() {
   }
 
   return Boolean(window.SpeechRecognition || window.webkitSpeechRecognition);
-}
-
-function browserSupportsSpeechSynthesis() {
-  if (typeof window === "undefined") {
-    return false;
-  }
-
-  return "speechSynthesis" in window;
-}
-
-function pickInterviewerVoice(
-  voices: SpeechSynthesisVoice[],
-  interviewer: InterviewerOption,
-) {
-  const englishVoices = voices.filter((voice) =>
-    voice.lang.toLowerCase().startsWith("en"),
-  );
-  const pool = englishVoices.length > 0 ? englishVoices : voices;
-
-  const matched = pool.find((voice) => {
-    const normalized = `${voice.name} ${voice.voiceURI}`.toLowerCase();
-    return interviewer.preference.some((hint) => normalized.includes(hint));
-  });
-
-  if (matched) {
-    return matched;
-  }
-
-  if (interviewer.id === "male") {
-    const lessLikelyFemale = pool.find((voice) => {
-      const normalized = `${voice.name} ${voice.voiceURI}`.toLowerCase();
-      return !["female", "woman", "samantha", "victoria", "zira", "karen", "ava", "aria"].some((hint) =>
-        normalized.includes(hint),
-      );
-    });
-
-    return lessLikelyFemale ?? pool[0] ?? null;
-  }
-
-  return pool[0] ?? null;
 }
 
 function buildInterviewIntro({
@@ -199,12 +187,10 @@ export function InterviewProcess({
   const [voiceState, setVoiceState] = useState<VoiceState>("idle");
   const [voiceNotice, setVoiceNotice] = useState<string | null>(null);
   const [interimTranscript, setInterimTranscript] = useState("");
-  const [availableVoices, setAvailableVoices] = useState<SpeechSynthesisVoice[]>([]);
   const [selectedInterviewerId, setSelectedInterviewerId] =
     useState<InterviewerOption["id"]>("female");
   const [hasDeliveredIntroduction, setHasDeliveredIntroduction] = useState(false);
   const [hasSpeechRecognition, setHasSpeechRecognition] = useState(false);
-  const [hasSpeechSynthesis, setHasSpeechSynthesis] = useState(false);
   const [voiceEngine, setVoiceEngine] = useState<VoiceEngine>("none");
   const [cameraPermission, setCameraPermission] =
     useState<PermissionState>("idle");
@@ -242,7 +228,6 @@ export function InterviewProcess({
 
   useEffect(() => {
     setHasSpeechRecognition(browserSupportsSpeechRecognition());
-    setHasSpeechSynthesis(browserSupportsSpeechSynthesis());
     setHasFaceDetection(typeof window !== "undefined" && "FaceDetector" in window);
   }, []);
 
@@ -260,10 +245,6 @@ export function InterviewProcess({
 
   useEffect(() => {
     return () => {
-      if (typeof window !== "undefined" && "speechSynthesis" in window) {
-        window.speechSynthesis.cancel();
-      }
-
       if (speechTimeoutRef.current) {
         window.clearTimeout(speechTimeoutRef.current);
       }
@@ -388,41 +369,11 @@ export function InterviewProcess({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentIndex, hasDeliveredIntroduction, hasStarted, isComplete]);
 
-  useEffect(() => {
-    if (!hasSpeechSynthesis) {
-      return;
-    }
-
-    const syncVoices = () => {
-      try {
-        setAvailableVoices(window.speechSynthesis?.getVoices?.() ?? []);
-      } catch {
-        setAvailableVoices([]);
-      }
-    };
-
-    syncVoices();
-
-    const synthesis = window.speechSynthesis;
-    const previousHandler = synthesis.onvoiceschanged;
-    synthesis.onvoiceschanged = syncVoices;
-
-    return () => {
-      synthesis.onvoiceschanged = previousHandler;
-    };
-  }, [hasSpeechSynthesis]);
-
   function stopSpeaking() {
     if (audioRef.current) {
       audioRef.current.pause();
       audioRef.current = null;
     }
-
-    if (!hasSpeechSynthesis) {
-      return;
-    }
-
-    window.speechSynthesis.cancel();
 
     if (speechTimeoutRef.current) {
       window.clearTimeout(speechTimeoutRef.current);
@@ -472,72 +423,27 @@ export function InterviewProcess({
         audio.onerror = () => {
           URL.revokeObjectURL(audioUrl);
           audioRef.current = null;
-          fallbackToBrowserSpeech(text, notice);
+          setVoiceEngine("unavailable");
+          setVoiceState("idle");
+          setVoiceNotice(
+            "Real AI voice could not finish playback. Add OPENAI_API_KEY in Vercel so the interviewer can use generated voice reliably.",
+          );
         };
 
         await audio.play();
         return;
       }
 
-      setVoiceNotice(
-        "Real AI voice is unavailable right now, so the app is using the browser fallback voice.",
-      );
-    } catch {
-      setVoiceNotice(
-        "Real AI voice could not start, so the app is using the browser fallback voice.",
-      );
-    }
-
-    fallbackToBrowserSpeech(text, notice);
-  }
-
-  function fallbackToBrowserSpeech(text: string, notice: string) {
-    setVoiceEngine("browser");
-
-    if (!hasSpeechSynthesis) {
-      setVoiceEngine("none");
-      setVoiceNotice(
-        "Question audio is not available in this browser, but you can still continue with typed answers.",
-      );
-      return;
-    }
-
-    try {
-      stopSpeaking();
-
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.rate = selectedInterviewer.fallbackRate;
-      utterance.pitch = selectedInterviewer.fallbackPitch;
-      const chosenVoice = pickInterviewerVoice(availableVoices, selectedInterviewer);
-
-      if (chosenVoice) {
-        utterance.voice = chosenVoice;
-        utterance.lang = chosenVoice.lang;
-      } else {
-        utterance.lang = "en-US";
-      }
-
-      utterance.onstart = () => {
-        setVoiceState("speaking");
-        setVoiceNotice(notice);
-      };
-      utterance.onend = () => {
-        setVoiceState("idle");
-        setVoiceNotice("Question finished. You can answer by voice or by typing.");
-      };
-      utterance.onerror = () => {
-        setVoiceState("idle");
-        setVoiceNotice("Voice playback could not finish, so you can read the question on screen.");
-      };
-
-      // Let the DOM settle a touch so speech starts more reliably after navigation.
-      speechTimeoutRef.current = window.setTimeout(() => {
-        window.speechSynthesis.speak(utterance);
-      }, 120);
-    } catch {
+      setVoiceEngine("unavailable");
       setVoiceState("idle");
       setVoiceNotice(
-        "This browser could not start interviewer voice playback, so you can continue with on-screen questions.",
+        "Real AI voice is unavailable right now. Add OPENAI_API_KEY in Vercel to enable distinct Elena and Marcus voices.",
+      );
+    } catch {
+      setVoiceEngine("unavailable");
+      setVoiceState("idle");
+      setVoiceNotice(
+        "Real AI voice could not start. Add OPENAI_API_KEY in Vercel so the interviewer can use real generated voice.",
       );
     }
   }
@@ -982,7 +888,13 @@ export function InterviewProcess({
           <span className="rounded-full bg-[#ff8c61]/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.16em] text-accent-strong">
             Voice {voiceState}
           </span>
-          <span className="rounded-full bg-[#10233c]/8 px-4 py-2 text-xs font-semibold uppercase tracking-[0.16em] text-foreground">
+          <span className={`rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-[0.16em] ${
+            voiceEngine === "ai"
+              ? "bg-[#10233c] text-white"
+              : voiceEngine === "unavailable"
+                ? "bg-[#ff8c61]/12 text-accent-strong"
+                : "bg-[#10233c]/8 text-foreground"
+          }`}>
             Engine {voiceEngine}
           </span>
           <span className="rounded-full bg-[#10233c]/8 px-4 py-2 text-xs font-semibold uppercase tracking-[0.16em] text-foreground">
@@ -1007,10 +919,7 @@ export function InterviewProcess({
         <div className="rounded-[1.5rem] border border-line bg-white/76 p-5">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div className="flex min-w-[220px] flex-1 items-start gap-4">
-              <InterviewerFigure
-                interviewerId={selectedInterviewer.id}
-                speaking={voiceState === "speaking"}
-              />
+              <InterviewerFigure interviewerId={selectedInterviewer.id} state={voiceState} />
               <div className="space-y-2">
                 <p className="text-sm font-semibold uppercase tracking-[0.16em] text-accent">
                   Live interviewer
