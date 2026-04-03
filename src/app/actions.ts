@@ -33,10 +33,18 @@ export async function createInterviewSession(formData: FormData) {
   const uploadedResume =
     resumeFile instanceof File ? await parseResumeUpload(resumeFile) : null;
   const normalizedPastedResumeText = pastedResumeText.trim();
+  const hasResumeInput =
+    normalizedPastedResumeText.length > 0 || uploadedResume !== null;
   const resumeContent =
     uploadedResume?.parsedText || normalizedPastedResumeText || "";
 
-  if (!field || !jobTitle || !jobDescription || !resumeContent) {
+  if (
+    !field ||
+    !jobTitle ||
+    !companyName ||
+    !jobDescription ||
+    !hasResumeInput
+  ) {
     redirect("/?error=missing-fields");
   }
 
@@ -77,8 +85,8 @@ export async function createInterviewSession(formData: FormData) {
           uploadedResume?.format === "PDF"
             ? ResumeFormat.PDF
             : ResumeFormat.TEXT,
-        rawText: uploadedResume?.rawText ?? normalizedPastedResumeText,
-        parsedText: resumeContent,
+        rawText: uploadedResume?.rawText || normalizedPastedResumeText || null,
+        parsedText: resumeContent || null,
       },
     });
 

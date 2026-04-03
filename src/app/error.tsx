@@ -5,7 +5,6 @@ import { useEffect } from "react";
 
 export default function GlobalError({
   error,
-  reset,
 }: {
   error: Error & { digest?: string };
   reset: () => void;
@@ -53,18 +52,17 @@ export default function GlobalError({
                 Quick actions
               </p>
               <div className="mt-4 flex flex-col gap-3">
-                <button
-                  type="button"
-                  onClick={() => reset()}
-                  className="rounded-2xl bg-[#ff8c61] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#f27545]"
+                <Link
+                  href="/"
+                  className="inline-flex items-center justify-center rounded-2xl bg-[#ff8c61] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#f27545]"
                 >
-                  Try again
-                </button>
+                  Go to home
+                </Link>
                 <Link
                   href="/"
                   className="inline-flex items-center justify-center rounded-2xl border border-white/12 bg-white/6 px-4 py-3 text-sm font-semibold text-white/86 transition hover:bg-white/10"
                 >
-                  Return to home
+                  Return to setup
                 </Link>
               </div>
             </div>

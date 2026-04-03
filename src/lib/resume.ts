@@ -6,6 +6,7 @@ type ParsedResume =
       format: "PDF" | "TEXT";
       rawText: string;
       parsedText: string;
+      extractedText: boolean;
     }
   | null;
 
@@ -35,25 +36,45 @@ export async function parseResumeUpload(file: File | null): Promise<ParsedResume
       format: "TEXT",
       rawText,
       parsedText: rawText,
+      extractedText: true,
     };
   }
 
   if (lowerName.endsWith(".pdf")) {
-    const { pdf } = require("pdf-parse");
-    const buffer = await file.arrayBuffer();
-    const result = await pdf(new Uint8Array(buffer));
-    const parsedText = normalizeResumeText(result.text);
+    try {
+      const { pdf } = require("pdf-parse");
+      const buffer = await file.arrayBuffer();
+      const result = await pdf(new Uint8Array(buffer));
+      const parsedText = normalizeResumeText(result.text);
 
-    if (!parsedText) {
-      return null;
+      if (!parsedText) {
+        return {
+          fileName,
+          format: "PDF",
+          rawText: "",
+          parsedText: "",
+          extractedText: false,
+        };
+      }
+
+      return {
+        fileName,
+        format: "PDF",
+        rawText: parsedText,
+        parsedText,
+        extractedText: true,
+      };
+    } catch (error) {
+      console.error("PDF resume parsing failed", error);
+
+      return {
+        fileName,
+        format: "PDF",
+        rawText: "",
+        parsedText: "",
+        extractedText: false,
+      };
     }
-
-    return {
-      fileName,
-      format: "PDF",
-      rawText: parsedText,
-      parsedText,
-    };
   }
 
   throw new Error("UNSUPPORTED_RESUME_FORMAT");
