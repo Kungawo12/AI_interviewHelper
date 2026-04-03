@@ -1,63 +1,277 @@
-export default function Home() {
-  return (
-    <main className="min-h-screen px-6 py-10 sm:px-10 lg:px-16">
-      <section className="mx-auto flex max-w-6xl flex-col gap-8 rounded-[2rem] border border-line bg-panel-strong p-8 shadow-[0_24px_80px_rgba(19,34,56,0.08)] lg:p-12">
-        <div className="flex flex-col gap-4">
-          <p className="w-fit rounded-full bg-accent/10 px-4 py-2 text-sm font-semibold tracking-[0.18em] text-accent uppercase">
-            AI Interview Helper
-          </p>
-          <div className="max-w-3xl space-y-4">
-            <h1 className="text-4xl font-semibold tracking-[-0.04em] sm:text-5xl lg:text-6xl">
-              Build a realistic AI interviewer for students and job seekers.
-            </h1>
-            <p className="max-w-2xl text-base leading-7 text-muted sm:text-lg">
-              This starter gives us a clean Next.js foundation plus a
-              PostgreSQL-ready Prisma schema for interview profiles, sessions,
-              generated questions, answers, and coaching feedback.
-            </p>
-          </div>
-        </div>
+import {
+  coachingSignals,
+  interviewFields,
+  onboardingHighlights,
+} from "@/lib/interview-config";
+import { createInterviewSession } from "./actions";
 
-        <div className="grid gap-6 lg:grid-cols-[1.3fr_0.9fr]">
-          <div className="rounded-[1.75rem] border border-line bg-[linear-gradient(135deg,rgba(209,104,63,0.12),rgba(19,34,56,0.02))] p-6">
-            <h2 className="text-xl font-semibold">MVP flow</h2>
-            <div className="mt-5 grid gap-4 sm:grid-cols-2">
-              {[
-                "Choose the field and role",
-                "Paste company and job specification",
-                "Upload or paste resume content",
-                "Generate 10 tailored interview questions",
-                "Capture spoken answers and transcripts",
-                "Score answers and save feedback history",
-              ].map((item, index) => (
+const errorMessages: Record<string, string> = {
+  "missing-fields": "Please complete the required fields before creating an interview session.",
+  "save-failed": "We could not save the interview setup. Check that PostgreSQL is running and the schema has been migrated.",
+};
+
+export default async function Home({
+  searchParams,
+}: {
+  searchParams?: Promise<{ error?: string }>;
+}) {
+  const params = searchParams ? await searchParams : undefined;
+  const error = params?.error ? errorMessages[params.error] : null;
+
+  return (
+    <main className="min-h-screen bg-[radial-gradient(circle_at_top_left,rgba(209,104,63,0.18),transparent_28%),linear-gradient(180deg,#f8f3ea_0%,#f4efe4_52%,#efe5d2_100%)] px-5 py-6 sm:px-8 lg:px-12">
+      <section className="mx-auto flex max-w-7xl flex-col gap-6 rounded-[2rem] border border-line bg-panel-strong/90 p-5 shadow-[0_28px_90px_rgba(19,34,56,0.08)] backdrop-blur sm:p-8 lg:p-10">
+        <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr] lg:items-start">
+          <div className="flex flex-col gap-6 rounded-[1.75rem] bg-foreground px-6 py-7 text-white sm:px-8">
+            <div className="space-y-4">
+              <p className="w-fit rounded-full bg-white/10 px-4 py-2 text-sm font-semibold tracking-[0.2em] text-white uppercase">
+                AI Interview Helper
+              </p>
+              <div className="space-y-4">
+                <h1 className="max-w-2xl text-4xl font-semibold tracking-[-0.05em] sm:text-5xl lg:text-6xl">
+                  Build stronger interview confidence with an app that practices like a real interviewer.
+                </h1>
+                <p className="max-w-2xl text-base leading-7 text-white/72 sm:text-lg">
+                  We are turning your product idea into a guided interview coach
+                  for students, job seekers, and career changers. This first
+                  screen captures the exact context we need to generate smarter,
+                  more relevant interview questions.
+                </p>
+              </div>
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-2">
+              {coachingSignals.map((signal) => (
                 <div
-                  key={item}
-                  className="rounded-2xl border border-line bg-panel px-4 py-4"
+                  key={signal}
+                  className="rounded-2xl border border-white/12 bg-white/6 px-4 py-4 text-sm leading-6 text-white/78"
                 >
-                  <p className="text-sm font-medium text-accent">
-                    Step {index + 1}
-                  </p>
-                  <p className="mt-2 text-sm leading-6 text-foreground">
-                    {item}
-                  </p>
+                  {signal}
                 </div>
               ))}
             </div>
+
+            <div className="rounded-[1.5rem] border border-white/12 bg-white/8 p-5">
+              <p className="text-sm font-semibold uppercase tracking-[0.18em] text-white/70">
+                Session plan
+              </p>
+              <ol className="mt-4 space-y-3 text-sm leading-6 text-white/78">
+                {onboardingHighlights.map((item, index) => (
+                  <li key={item} className="flex gap-3">
+                    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-white/12 text-xs font-semibold">
+                      {index + 1}
+                    </span>
+                    <span>{item}</span>
+                  </li>
+                ))}
+              </ol>
+            </div>
           </div>
 
-          <div className="rounded-[1.75rem] border border-line bg-foreground p-6 text-white">
-            <h2 className="text-xl font-semibold">Data model ready</h2>
-            <ul className="mt-5 space-y-3 text-sm leading-6 text-white/80">
-              <li>`User` keeps identity and ownership.</li>
-              <li>`InterviewProfile` stores role, field, and company context.</li>
-              <li>`Resume` stores source files and extracted text.</li>
-              <li>`InterviewSession` tracks each mock interview run.</li>
-              <li>`Question`, `Answer`, and `Feedback` power coaching.</li>
-              <li>`QuestionHistory` helps prevent repeated prompts.</li>
-            </ul>
-            <div className="mt-6 rounded-2xl bg-white/8 p-4 text-sm leading-6 text-white/90">
-              Next move: connect PostgreSQL, run Prisma migrations, and build
-              the onboarding form for the first interview session.
+          <div className="rounded-[1.75rem] border border-line bg-panel p-6 sm:p-7">
+            <div className="flex flex-col gap-2">
+              <p className="text-sm font-semibold uppercase tracking-[0.18em] text-accent">
+                Start an interview
+              </p>
+              <h2 className="text-2xl font-semibold tracking-[-0.03em]">
+                Create the first guided interview profile
+              </h2>
+              <p className="max-w-xl text-sm leading-6 text-muted sm:text-base">
+                We’ll use these inputs to generate role-specific interview
+                questions and prepare the session flow.
+              </p>
+            </div>
+
+            {error ? (
+              <div className="mt-6 rounded-2xl border border-[rgba(168,72,37,0.22)] bg-[rgba(209,104,63,0.08)] px-4 py-4 text-sm leading-6 text-accent-strong">
+                {error}
+              </div>
+            ) : null}
+
+            <form action={createInterviewSession} className="mt-6 space-y-6">
+              <div className="grid gap-4 sm:grid-cols-2">
+                <label className="space-y-2">
+                  <span className="text-sm font-semibold text-foreground">
+                    Candidate name
+                  </span>
+                  <input
+                    type="text"
+                    name="candidateName"
+                    placeholder="Tenzin Kunga"
+                    className="w-full rounded-2xl border border-line bg-panel-strong px-4 py-3 text-sm text-foreground outline-none transition placeholder:text-muted focus:border-accent"
+                  />
+                </label>
+
+                <label className="space-y-2">
+                  <span className="text-sm font-semibold text-foreground">
+                    Email
+                  </span>
+                  <input
+                    type="email"
+                    name="email"
+                    placeholder="you@example.com"
+                    className="w-full rounded-2xl border border-line bg-panel-strong px-4 py-3 text-sm text-foreground outline-none transition placeholder:text-muted focus:border-accent"
+                  />
+                </label>
+              </div>
+
+              <div className="space-y-3">
+                <label className="text-sm font-semibold text-foreground">
+                  1. Choose the interview field
+                </label>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {interviewFields.map((field) => (
+                    <label
+                      key={field.id}
+                      className="group flex cursor-pointer gap-3 rounded-2xl border border-line bg-panel-strong px-4 py-4 transition hover:border-accent/55 hover:bg-accent/5"
+                    >
+                      <input
+                        type="radio"
+                        name="field"
+                        value={field.id}
+                        defaultChecked={field.id === "technology"}
+                        className="mt-1 h-4 w-4 border-line text-accent focus:ring-accent"
+                      />
+                      <span className="space-y-1">
+                        <span className="block text-sm font-semibold text-foreground">
+                          {field.label}
+                        </span>
+                        <span className="block text-sm leading-6 text-muted">
+                          {field.description}
+                        </span>
+                      </span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <label className="space-y-2">
+                  <span className="text-sm font-semibold text-foreground">
+                    2. Job title
+                  </span>
+                  <input
+                    type="text"
+                    name="jobTitle"
+                    placeholder="Junior Software Engineer"
+                    className="w-full rounded-2xl border border-line bg-panel-strong px-4 py-3 text-sm text-foreground outline-none transition placeholder:text-muted focus:border-accent"
+                  />
+                </label>
+
+                <label className="space-y-2">
+                  <span className="text-sm font-semibold text-foreground">
+                    3. Company name
+                  </span>
+                  <input
+                    type="text"
+                    name="companyName"
+                    placeholder="Airbnb"
+                    className="w-full rounded-2xl border border-line bg-panel-strong px-4 py-3 text-sm text-foreground outline-none transition placeholder:text-muted focus:border-accent"
+                  />
+                </label>
+              </div>
+
+              <label className="block space-y-2">
+                <span className="text-sm font-semibold text-foreground">
+                  4. Job specification or job description
+                </span>
+                <textarea
+                  rows={6}
+                  name="jobDescription"
+                  placeholder="Paste the responsibilities, requirements, preferred qualifications, and company expectations here."
+                  className="w-full rounded-[1.5rem] border border-line bg-panel-strong px-4 py-3 text-sm leading-6 text-foreground outline-none transition placeholder:text-muted focus:border-accent"
+                />
+              </label>
+
+              <div className="grid gap-4 lg:grid-cols-[1fr_1fr]">
+                <label className="block space-y-2">
+                  <span className="text-sm font-semibold text-foreground">
+                    5. Resume text
+                  </span>
+                  <textarea
+                    rows={7}
+                    name="resumeText"
+                    placeholder="Paste the user's resume here for the first version. File upload can be added next."
+                    className="w-full rounded-[1.5rem] border border-line bg-panel-strong px-4 py-3 text-sm leading-6 text-foreground outline-none transition placeholder:text-muted focus:border-accent"
+                  />
+                </label>
+
+                <div className="space-y-4 rounded-[1.5rem] border border-dashed border-accent/35 bg-[linear-gradient(180deg,rgba(209,104,63,0.08),rgba(255,255,255,0.6))] p-5">
+                  <div className="space-y-2">
+                    <p className="text-sm font-semibold uppercase tracking-[0.18em] text-accent">
+                      Resume intake
+                    </p>
+                    <h3 className="text-xl font-semibold tracking-[-0.03em] text-foreground">
+                      File upload comes next
+                    </h3>
+                    <p className="text-sm leading-6 text-muted">
+                      For now, we can capture resume content as text. In the
+                      next feature pass, we’ll add PDF and DOCX upload, text
+                      extraction, and profile prefill.
+                    </p>
+                  </div>
+
+                  <div className="rounded-2xl border border-line bg-panel-strong px-4 py-4 text-sm leading-6 text-foreground">
+                    Planned support:
+                    <ul className="mt-2 space-y-2 text-muted">
+                      <li>PDF resume upload</li>
+                      <li>DOCX resume upload</li>
+                      <li>AI-generated strengths summary</li>
+                      <li>Automatic skill tag extraction</li>
+                    </ul>
+                  </div>
+
+                  <button
+                    type="submit"
+                    className="w-full rounded-2xl bg-accent px-4 py-3 text-sm font-semibold text-white transition hover:bg-accent-strong"
+                  >
+                    Save interview session
+                  </button>
+                </div>
+              </div>
+            </form>
+          </div>
+        </div>
+
+        <div className="grid gap-4 lg:grid-cols-[0.95fr_1.05fr]">
+          <div className="rounded-[1.5rem] border border-line bg-panel p-5">
+            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-accent">
+              What the app will do next
+            </p>
+            <div className="mt-4 space-y-3 text-sm leading-6 text-foreground">
+              <p>
+                The first submitted profile will create a reusable interview
+                context in the database and start the user’s first interview
+                session.
+              </p>
+              <p className="text-muted">
+                After that, we’ll generate 10 tailored questions, store them in
+                PostgreSQL, and wire the session screen for answer capture and
+                feedback.
+              </p>
+            </div>
+          </div>
+
+          <div className="rounded-[1.5rem] border border-line bg-panel-strong p-5">
+            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-accent">
+              Already built
+            </p>
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              {[
+                "Next.js app scaffold",
+                "Prisma client setup",
+                "PostgreSQL schema",
+                "Question history model",
+                "GitHub-connected repo",
+                "Vercel-safe Next.js patch level",
+              ].map((item) => (
+                <div
+                  key={item}
+                  className="rounded-2xl border border-line bg-panel px-4 py-4 text-sm leading-6 text-foreground"
+                >
+                  {item}
+                </div>
+              ))}
             </div>
           </div>
         </div>
