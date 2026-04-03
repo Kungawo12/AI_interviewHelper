@@ -8,12 +8,12 @@ type VoiceRequest = {
 
 const voiceConfig = {
   female: {
-    voice: "marin",
+    voice: "nova",
     style:
       "Speak like a calm, warm, highly professional interviewer in a realistic video interview. Sound natural, polished, human, and reassuring.",
   },
   male: {
-    voice: "cedar",
+    voice: "onyx",
     style:
       "Speak like a confident, composed, highly professional interviewer in a realistic live interview. Sound natural, polished, human, and measured.",
   },
@@ -62,7 +62,8 @@ export async function POST(request: Request) {
       voice: selected.voice,
       input: text,
       instructions,
-      format: "mp3",
+      response_format: "wav",
+      speed: 0.96,
     }),
   });
 

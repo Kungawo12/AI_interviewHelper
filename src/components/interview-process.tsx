@@ -35,6 +35,56 @@ type PresenceMetrics = {
   status: string;
 };
 
+function InterviewerFigure({
+  interviewerId,
+  speaking,
+}: {
+  interviewerId: "female" | "male";
+  speaking: boolean;
+}) {
+  const isFemale = interviewerId === "female";
+
+  return (
+    <div
+      className={`relative h-48 w-40 overflow-hidden rounded-[2rem] border shadow-[0_20px_50px_rgba(16,35,60,0.16)] transition ${
+        speaking
+          ? "scale-[1.02] border-[#ff8c61]/35 bg-[linear-gradient(180deg,#fff2ec_0%,#ffe7dc_34%,#f4f7fb_100%)]"
+          : "border-[#10233c]/10 bg-[linear-gradient(180deg,#f8fbff_0%,#eef4fb_42%,#f4f7fb_100%)]"
+      }`}
+    >
+      <div className="absolute inset-x-0 top-0 h-20 bg-[radial-gradient(circle_at_top,rgba(255,140,97,0.18),transparent_68%)]" />
+      <div className="absolute left-1/2 top-6 h-16 w-16 -translate-x-1/2 rounded-full bg-[#f2c8ab]" />
+      <div
+        className={`absolute left-1/2 top-3 -translate-x-1/2 rounded-full ${
+          isFemale ? "h-14 w-20 bg-[#2b221d]" : "h-12 w-18 bg-[#241c17]"
+        }`}
+      />
+      {isFemale ? (
+        <div className="absolute left-1/2 top-10 h-16 w-24 -translate-x-1/2 rounded-[999px] bg-[#2b221d]" />
+      ) : (
+        <div className="absolute left-1/2 top-11 h-8 w-12 -translate-x-1/2 rounded-b-[999px] bg-[#241c17]" />
+      )}
+      <div className="absolute left-1/2 top-[5.65rem] h-3 w-4 -translate-x-1/2 rounded-b-full bg-[#e2b292]" />
+      <div
+        className={`absolute left-1/2 top-28 h-28 w-32 -translate-x-1/2 rounded-t-[2.4rem] ${
+          isFemale ? "bg-[#dd6c4b]" : "bg-[#183252]"
+        }`}
+      />
+      <div className="absolute left-1/2 top-[7.1rem] h-6 w-10 -translate-x-1/2 rounded-b-[1rem] bg-[#f2c8ab]" />
+      <div className="absolute left-[4.25rem] top-[3.95rem] h-1.5 w-1.5 rounded-full bg-[#2a211c]" />
+      <div className="absolute right-[4.25rem] top-[3.95rem] h-1.5 w-1.5 rounded-full bg-[#2a211c]" />
+      <div className="absolute left-1/2 top-[4.8rem] h-1.5 w-5 -translate-x-1/2 rounded-full bg-[#ba876e]" />
+      <div
+        className={`absolute bottom-3 left-1/2 -translate-x-1/2 rounded-full px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] ${
+          speaking ? "bg-[#10233c] text-white" : "bg-white/80 text-[#10233c]"
+        }`}
+      >
+        {speaking ? "Speaking" : "Waiting"}
+      </div>
+    </div>
+  );
+}
+
 const interviewerOptions: InterviewerOption[] = [
   {
     id: "female",
@@ -428,8 +478,14 @@ export function InterviewProcess({
         await audio.play();
         return;
       }
+
+      setVoiceNotice(
+        "Real AI voice is unavailable right now, so the app is using the browser fallback voice.",
+      );
     } catch {
-      // Browser fallback below.
+      setVoiceNotice(
+        "Real AI voice could not start, so the app is using the browser fallback voice.",
+      );
     }
 
     fallbackToBrowserSpeech(text, notice);
@@ -951,17 +1007,10 @@ export function InterviewProcess({
         <div className="rounded-[1.5rem] border border-line bg-white/76 p-5">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div className="flex min-w-[220px] flex-1 items-start gap-4">
-              <div
-                className={`flex h-20 w-20 items-center justify-center rounded-full border text-white shadow-[0_18px_40px_rgba(16,35,60,0.18)] transition ${
-                  voiceState === "speaking"
-                    ? "scale-105 border-[#ff8c61]/50 bg-[radial-gradient(circle_at_top,#ffb08f,#ff7c49_58%,#10233c)]"
-                    : "border-[#10233c]/15 bg-[radial-gradient(circle_at_top,#33557d,#10233c_68%,#09111e)]"
-                }`}
-              >
-                <span className="font-display text-2xl">
-                  {selectedInterviewer.name.slice(0, 1)}
-                </span>
-              </div>
+              <InterviewerFigure
+                interviewerId={selectedInterviewer.id}
+                speaking={voiceState === "speaking"}
+              />
               <div className="space-y-2">
                 <p className="text-sm font-semibold uppercase tracking-[0.16em] text-accent">
                   Live interviewer
@@ -970,7 +1019,7 @@ export function InterviewProcess({
                   {selectedInterviewer.name}
                 </h3>
                 <p className="max-w-xl text-sm leading-6 text-muted">
-                  A video-call style interviewer presence while the session is active.
+                  A more human, video-call style interviewer presence while the session is active.
                 </p>
               </div>
             </div>
