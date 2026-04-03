@@ -6,8 +6,9 @@ import {
 import { createInterviewSession } from "./actions";
 
 const errorMessages: Record<string, string> = {
-  "missing-fields": "Please complete the required fields before creating an interview session.",
+  "missing-fields": "Please complete the required fields and provide a resume as PDF, TXT, or pasted text before creating an interview session.",
   "save-failed": "We could not save the interview setup. Check that PostgreSQL is running and the schema has been migrated.",
+  "unsupported-resume-format": "Resume upload currently supports PDF and TXT files. You can also paste resume text directly.",
 };
 
 export default async function Home({
@@ -186,12 +187,12 @@ export default async function Home({
               <div className="grid gap-4 lg:grid-cols-[1fr_1fr]">
                 <label className="block space-y-2">
                   <span className="text-sm font-semibold text-foreground">
-                    5. Resume text
+                    5. Resume text fallback
                   </span>
                   <textarea
                     rows={7}
                     name="resumeText"
-                    placeholder="Paste the user's resume here for the first version. File upload can be added next."
+                    placeholder="Paste the resume only if the user does not upload a PDF or TXT file."
                     className="w-full rounded-[1.5rem] border border-line bg-panel-strong px-4 py-3 text-sm leading-6 text-foreground outline-none transition placeholder:text-muted focus:border-accent"
                   />
                 </label>
@@ -202,22 +203,33 @@ export default async function Home({
                       Resume intake
                     </p>
                     <h3 className="text-xl font-semibold tracking-[-0.03em] text-foreground">
-                      File upload comes next
+                      Upload the resume directly
                     </h3>
                     <p className="text-sm leading-6 text-muted">
-                      For now, we can capture resume content as text. In the
-                      next feature pass, we’ll add PDF and DOCX upload, text
-                      extraction, and profile prefill.
+                      The app now accepts PDF and TXT uploads. If no file is
+                      available, pasted text still works as a fallback.
                     </p>
                   </div>
 
+                  <label className="block space-y-2">
+                    <span className="text-sm font-semibold text-foreground">
+                      Resume file
+                    </span>
+                    <input
+                      type="file"
+                      name="resumeFile"
+                      accept=".pdf,.txt,application/pdf,text/plain"
+                      className="block w-full rounded-2xl border border-line bg-panel-strong px-4 py-3 text-sm text-foreground file:mr-4 file:rounded-xl file:border-0 file:bg-accent file:px-3 file:py-2 file:text-sm file:font-semibold file:text-white"
+                    />
+                  </label>
+
                   <div className="rounded-2xl border border-line bg-panel-strong px-4 py-4 text-sm leading-6 text-foreground">
-                    Planned support:
+                    Current support:
                     <ul className="mt-2 space-y-2 text-muted">
-                      <li>PDF resume upload</li>
-                      <li>DOCX resume upload</li>
-                      <li>AI-generated strengths summary</li>
-                      <li>Automatic skill tag extraction</li>
+                      <li>PDF resume upload and text extraction</li>
+                      <li>TXT resume upload</li>
+                      <li>Pasted text fallback</li>
+                      <li>Saved parsed text for session generation</li>
                     </ul>
                   </div>
 

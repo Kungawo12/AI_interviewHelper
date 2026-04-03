@@ -4,6 +4,7 @@ import { FieldType, ResumeFormat, SessionStatus } from "@prisma/client";
 import { redirect } from "next/navigation";
 
 import { db } from "@/lib/db";
+import { parseResumeUpload } from "@/lib/resume";
 
 const fieldTypeMap: Record<string, FieldType> = {
   technology: FieldType.TECHNOLOGY,
@@ -25,9 +26,16 @@ export async function createInterviewSession(formData: FormData) {
   const jobTitle = readValue(formData, "jobTitle");
   const companyName = readValue(formData, "companyName");
   const jobDescription = readValue(formData, "jobDescription");
-  const resumeText = readValue(formData, "resumeText");
+  const pastedResumeText = readValue(formData, "resumeText");
+  const resumeFile = formData.get("resumeFile");
 
-  if (!field || !jobTitle || !jobDescription || !resumeText) {
+  const uploadedResume =
+    resumeFile instanceof File ? await parseResumeUpload(resumeFile) : null;
+  const normalizedPastedResumeText = pastedResumeText.trim();
+  const resumeContent =
+    uploadedResume?.parsedText || normalizedPastedResumeText || "";
+
+  if (!field || !jobTitle || !jobDescription || !resumeContent) {
     redirect("/?error=missing-fields");
   }
 
@@ -63,10 +71,13 @@ export async function createInterviewSession(formData: FormData) {
     const resume = await db.resume.create({
       data: {
         userId: user.id,
-        fileName: "pasted-resume.txt",
-        format: ResumeFormat.TEXT,
-        rawText: resumeText,
-        parsedText: resumeText,
+        fileName: uploadedResume?.fileName ?? "pasted-resume.txt",
+        format:
+          uploadedResume?.format === "PDF"
+            ? ResumeFormat.PDF
+            : ResumeFormat.TEXT,
+        rawText: uploadedResume?.rawText ?? normalizedPastedResumeText,
+        parsedText: resumeContent,
       },
     });
 
@@ -83,7 +94,14 @@ export async function createInterviewSession(formData: FormData) {
     });
 
     redirect(`/interview/session/${session.id}`);
-  } catch {
+  } catch (error) {
+    if (
+      error instanceof Error &&
+      error.message === "UNSUPPORTED_RESUME_FORMAT"
+    ) {
+      redirect("/?error=unsupported-resume-format");
+    }
+
     redirect("/?error=save-failed");
   }
 }

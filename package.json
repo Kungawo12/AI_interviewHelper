@@ -14,6 +14,7 @@
   "dependencies": {
     "@prisma/client": "^6.19.3",
     "next": "^15.2.8",
+    "pdf-parse": "^2.2.2",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
   },
