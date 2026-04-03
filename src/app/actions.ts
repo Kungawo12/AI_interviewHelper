@@ -48,6 +48,8 @@ export async function createInterviewSession(formData: FormData) {
     redirect("/?error=missing-fields");
   }
 
+  let sessionId: string | null = null;
+
   try {
     const user =
       email.length > 0
@@ -121,8 +123,7 @@ export async function createInterviewSession(formData: FormData) {
         sourceNotes: question.sourceNotes,
       })),
     });
-
-    redirect(`/interview/session/${session.id}`);
+    sessionId = session.id;
   } catch (error) {
     if (
       error instanceof Error &&
@@ -133,4 +134,10 @@ export async function createInterviewSession(formData: FormData) {
 
     redirect("/?error=save-failed");
   }
+
+  if (!sessionId) {
+    redirect("/?error=save-failed");
+  }
+
+  redirect(`/interview/session/${sessionId}`);
 }
