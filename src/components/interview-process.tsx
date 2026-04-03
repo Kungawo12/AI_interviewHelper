@@ -19,6 +19,27 @@ type InterviewProcessProps = {
 
 type PermissionState = "idle" | "granted" | "denied";
 type VoiceState = "idle" | "speaking" | "listening";
+type InterviewerOption = {
+  id: "female" | "male";
+  name: string;
+  label: string;
+  preference: string[];
+};
+
+const interviewerOptions: InterviewerOption[] = [
+  {
+    id: "female",
+    name: "Elena",
+    label: "Female interviewer",
+    preference: ["female", "woman", "samantha", "victoria", "karen", "zira", "ava", "aria"],
+  },
+  {
+    id: "male",
+    name: "Marcus",
+    label: "Male interviewer",
+    preference: ["male", "man", "david", "mark", "alex", "daniel", "fred", "tom"],
+  },
+];
 
 function formatDuration(totalSeconds: number) {
   const minutes = Math.floor(totalSeconds / 60)
@@ -45,6 +66,47 @@ function browserSupportsSpeechSynthesis() {
   return "speechSynthesis" in window;
 }
 
+function pickInterviewerVoice(
+  voices: SpeechSynthesisVoice[],
+  interviewer: InterviewerOption,
+) {
+  const englishVoices = voices.filter((voice) =>
+    voice.lang.toLowerCase().startsWith("en"),
+  );
+  const pool = englishVoices.length > 0 ? englishVoices : voices;
+
+  const matched = pool.find((voice) => {
+    const normalized = `${voice.name} ${voice.voiceURI}`.toLowerCase();
+    return interviewer.preference.some((hint) => normalized.includes(hint));
+  });
+
+  return matched ?? pool[0] ?? null;
+}
+
+function buildInterviewIntro({
+  interviewerName,
+  jobTitle,
+  companyName,
+  questionCount,
+}: {
+  interviewerName: string;
+  jobTitle: string;
+  companyName?: string | null;
+  questionCount: number;
+}) {
+  return [
+    `Hello, I am ${interviewerName}, and I will be your interviewer for this session.`,
+    `Today we are practicing for the role of ${jobTitle}${
+      companyName ? ` at ${companyName}` : ""
+    }.`,
+    `Here is how this interview will go. I will ask ${questionCount} questions, one at a time. After each question, take a moment, answer clearly, and move forward when you are ready.`,
+    "Please speak naturally, stay focused on the question, and answer with specific examples whenever possible.",
+    "A few interview rules before we begin. Keep your answers relevant, do not rush, and treat this like a real professional interview.",
+    "If you prefer, you can type instead of speaking, but I encourage you to answer out loud for better practice.",
+    "We are ready to begin. Listen carefully to the first question.",
+  ].join(" ");
+}
+
 export function InterviewProcess({
   sessionId,
   jobTitle,
@@ -61,6 +123,10 @@ export function InterviewProcess({
   const [voiceState, setVoiceState] = useState<VoiceState>("idle");
   const [voiceNotice, setVoiceNotice] = useState<string | null>(null);
   const [interimTranscript, setInterimTranscript] = useState("");
+  const [availableVoices, setAvailableVoices] = useState<SpeechSynthesisVoice[]>([]);
+  const [selectedInterviewerId, setSelectedInterviewerId] =
+    useState<InterviewerOption["id"]>("female");
+  const [hasDeliveredIntroduction, setHasDeliveredIntroduction] = useState(false);
   const recognitionRef = useRef<SpeechRecognition | null>(null);
   const recognitionQuestionIdRef = useRef<string | null>(null);
   const speechTimeoutRef = useRef<number | null>(null);
@@ -81,6 +147,9 @@ export function InterviewProcess({
 
   const hasSpeechRecognition = browserSupportsSpeechRecognition();
   const hasSpeechSynthesis = browserSupportsSpeechSynthesis();
+  const selectedInterviewer =
+    interviewerOptions.find((option) => option.id === selectedInterviewerId) ??
+    interviewerOptions[0];
 
   useEffect(() => {
     if (!hasStarted || isComplete) {
@@ -113,11 +182,34 @@ export function InterviewProcess({
       return;
     }
 
+    if (!hasDeliveredIntroduction && currentIndex === 0) {
+      speakIntroductionAndQuestion(currentQuestion.questionText);
+      setHasDeliveredIntroduction(true);
+      return;
+    }
+
     speakQuestion(currentQuestion.questionText);
     setInterimTranscript("");
     stopListening();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentIndex, hasStarted, isComplete]);
+  }, [currentIndex, hasDeliveredIntroduction, hasStarted, isComplete]);
+
+  useEffect(() => {
+    if (!hasSpeechSynthesis) {
+      return;
+    }
+
+    const syncVoices = () => {
+      setAvailableVoices(window.speechSynthesis.getVoices());
+    };
+
+    syncVoices();
+    window.speechSynthesis.addEventListener("voiceschanged", syncVoices);
+
+    return () => {
+      window.speechSynthesis.removeEventListener("voiceschanged", syncVoices);
+    };
+  }, [hasSpeechSynthesis]);
 
   function stopSpeaking() {
     if (!hasSpeechSynthesis) {
@@ -136,7 +228,7 @@ export function InterviewProcess({
     }
   }
 
-  function speakQuestion(questionText: string) {
+  function speakText(text: string, notice: string) {
     if (!hasSpeechSynthesis) {
       setVoiceNotice(
         "Question audio is not available in this browser, but you can still continue with typed answers.",
@@ -146,12 +238,21 @@ export function InterviewProcess({
 
     stopSpeaking();
 
-    const utterance = new SpeechSynthesisUtterance(questionText);
+    const utterance = new SpeechSynthesisUtterance(text);
     utterance.rate = 0.95;
     utterance.pitch = 1;
+    const chosenVoice = pickInterviewerVoice(availableVoices, selectedInterviewer);
+
+    if (chosenVoice) {
+      utterance.voice = chosenVoice;
+      utterance.lang = chosenVoice.lang;
+    } else {
+      utterance.lang = "en-US";
+    }
+
     utterance.onstart = () => {
       setVoiceState("speaking");
-      setVoiceNotice("Your interview coach is reading the question aloud.");
+      setVoiceNotice(notice);
     };
     utterance.onend = () => {
       setVoiceState("idle");
@@ -166,6 +267,27 @@ export function InterviewProcess({
     speechTimeoutRef.current = window.setTimeout(() => {
       window.speechSynthesis.speak(utterance);
     }, 120);
+  }
+
+  function speakQuestion(questionText: string) {
+    speakText(
+      questionText,
+      `${selectedInterviewer.name} is asking the next interview question.`,
+    );
+  }
+
+  function speakIntroductionAndQuestion(questionText: string) {
+    const intro = buildInterviewIntro({
+      interviewerName: selectedInterviewer.name,
+      jobTitle,
+      companyName,
+      questionCount: questions.length,
+    });
+
+    speakText(
+      `${intro} First question. ${questionText}`,
+      `${selectedInterviewer.name} is introducing the interview and setting expectations.`,
+    );
   }
 
   async function requestMicrophonePermission() {
@@ -285,6 +407,7 @@ export function InterviewProcess({
 
   async function handleStartInterview() {
     await requestMicrophonePermission();
+    setHasDeliveredIntroduction(false);
     setHasStarted(true);
   }
 
@@ -325,9 +448,41 @@ export function InterviewProcess({
               Let&apos;s begin your practice round.
             </h2>
             <p className="max-w-2xl text-sm leading-7 text-muted sm:text-base">
-              When you press start, the app will ask for microphone access, read
-              each question aloud, and keep the timer running until the final
-              question is completed.
+              {selectedInterviewer.name} will introduce the session, explain the
+              role and the rules, then begin asking questions one by one.
+            </p>
+          </div>
+
+          <div className="rounded-[1.5rem] border border-line bg-white/78 p-5">
+            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-accent">
+              Choose your interviewer
+            </p>
+            <div className="mt-4 flex flex-wrap gap-3">
+              {interviewerOptions.map((option) => {
+                const isActive = option.id === selectedInterviewerId;
+
+                return (
+                  <button
+                    key={option.id}
+                    type="button"
+                    onClick={() => setSelectedInterviewerId(option.id)}
+                    className={`rounded-[1.2rem] px-4 py-3 text-sm font-semibold transition ${
+                      isActive
+                        ? "bg-[#10233c] text-white"
+                        : "border border-line bg-white/84 text-foreground hover:bg-white"
+                    }`}
+                  >
+                    {option.name}
+                    <span className="ml-2 text-xs uppercase tracking-[0.14em] opacity-80">
+                      {option.id}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+            <p className="mt-3 text-sm leading-6 text-muted">
+              Choose the interviewer voice that feels more comfortable for your
+              practice session.
             </p>
           </div>
 
@@ -367,8 +522,13 @@ export function InterviewProcess({
               Speech-to-text fills the answer box while you speak, when supported.
             </div>
             <div className="rounded-[1.35rem] border border-line bg-white/76 px-4 py-4 text-sm leading-6 text-muted">
-              The interviewer voice reads each question so the practice feels more natural.
+              The interviewer opens with an introduction, explains the flow, and reads each question out loud.
             </div>
+          </div>
+
+          <div className="rounded-[1.5rem] border border-[#10233c]/10 bg-[#10233c]/5 p-5 text-sm leading-7 text-muted">
+            Interview rules: stay professional, keep answers relevant, use real
+            examples when possible, and treat the session like a live interview.
           </div>
 
           <button
@@ -461,10 +621,13 @@ export function InterviewProcess({
 
         <div className="flex flex-wrap gap-3">
           <span className="rounded-full bg-[#10233c]/8 px-4 py-2 text-xs font-semibold uppercase tracking-[0.16em] text-foreground">
-            Microphone {microphonePermission}
+              Microphone {microphonePermission}
           </span>
           <span className="rounded-full bg-[#ff8c61]/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.16em] text-accent-strong">
             Voice {voiceState}
+          </span>
+          <span className="rounded-full bg-[#10233c]/8 px-4 py-2 text-xs font-semibold uppercase tracking-[0.16em] text-foreground">
+            Interviewer {selectedInterviewer.name}
           </span>
           {!hasSpeechRecognition ? (
             <span className="rounded-full bg-[#10233c]/8 px-4 py-2 text-xs font-semibold uppercase tracking-[0.16em] text-muted">
@@ -495,6 +658,15 @@ export function InterviewProcess({
               className="rounded-[1.1rem] border border-line bg-white/84 px-4 py-3 text-sm font-semibold text-foreground transition hover:bg-white"
             >
               Read question aloud
+            </button>
+            <button
+              type="button"
+              onClick={() =>
+                speakIntroductionAndQuestion(currentQuestion.questionText)
+              }
+              className="rounded-[1.1rem] border border-line bg-white/84 px-4 py-3 text-sm font-semibold text-foreground transition hover:bg-white"
+            >
+              Replay intro
             </button>
             <button
               type="button"
