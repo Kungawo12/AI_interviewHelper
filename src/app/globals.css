@@ -1,14 +1,15 @@
 @import "tailwindcss";
 
 :root {
-  --background: #f4efe4;
+  --background: #efe7d6;
   --foreground: #132238;
-  --panel: #fffaf2;
-  --panel-strong: #ffffff;
-  --muted: #5a6878;
-  --accent: #d1683f;
-  --accent-strong: #a84825;
-  --line: rgba(19, 34, 56, 0.12);
+  --panel: rgba(255, 252, 246, 0.82);
+  --panel-strong: rgba(255, 255, 255, 0.94);
+  --muted: #5f6d7d;
+  --accent: #ff7c49;
+  --accent-strong: #d95d28;
+  --highlight: #1c7891;
+  --line: rgba(19, 34, 56, 0.1);
 }
 
 @theme inline {
@@ -19,9 +20,15 @@
   --color-muted: var(--muted);
   --color-accent: var(--accent);
   --color-accent-strong: var(--accent-strong);
+  --color-highlight: var(--highlight);
   --color-line: var(--line);
-  --font-sans: var(--font-geist-sans);
+  --font-sans: var(--font-sora);
+  --font-display: var(--font-newsreader);
   --font-mono: var(--font-geist-mono);
+}
+
+html {
+  scroll-behavior: smooth;
 }
 
 * {
@@ -29,12 +36,70 @@
 }
 
 body {
-  background: var(--background);
+  background:
+    radial-gradient(circle at top left, rgba(255, 124, 73, 0.17), transparent 24%),
+    radial-gradient(circle at right center, rgba(28, 120, 145, 0.14), transparent 28%),
+    linear-gradient(180deg, #fbf6ec 0%, #efe7d6 100%);
   color: var(--foreground);
-  font-family: var(--font-geist-sans), sans-serif;
+  font-family: var(--font-sora), sans-serif;
 }
 
 a {
   color: inherit;
   text-decoration: none;
+}
+
+::selection {
+  background: rgba(255, 124, 73, 0.24);
+}
+
+.glass-card {
+  background: rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(18px);
+}
+
+.reveal {
+  opacity: 0;
+  transform: translateY(28px) scale(0.985);
+  transition:
+    opacity 720ms cubic-bezier(0.22, 1, 0.36, 1),
+    transform 720ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.reveal-visible {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+
+.float-soft {
+  animation: float-soft 9s ease-in-out infinite;
+}
+
+.float-delayed {
+  animation: float-soft 11s ease-in-out infinite;
+  animation-delay: 1.2s;
+}
+
+.pulse-glow {
+  animation: pulse-glow 6s ease-in-out infinite;
+}
+
+@keyframes float-soft {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-12px);
+  }
+}
+
+@keyframes pulse-glow {
+  0%,
+  100% {
+    box-shadow: 0 18px 44px rgba(255, 124, 73, 0.12);
+  }
+  50% {
+    box-shadow: 0 26px 60px rgba(255, 124, 73, 0.22);
+  }
 }

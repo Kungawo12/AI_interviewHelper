@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { Reveal } from "@/components/reveal";
 import { db } from "@/lib/db";
 
 function buildPreviewQuestions(jobTitle: string, companyName?: string | null) {
@@ -13,14 +14,56 @@ function buildPreviewQuestions(jobTitle: string, companyName?: string | null) {
   ];
 }
 
-export default async function InterviewSessionPage({
-  params,
-}: {
-  params: Promise<{ sessionId: string }>;
-}) {
-  const { sessionId } = await params;
+function SessionLoadError() {
+  return (
+    <main className="min-h-screen px-5 py-8 sm:px-8 lg:px-12">
+      <section className="mx-auto flex max-w-6xl flex-col gap-6 rounded-[2rem] border border-white/50 bg-white/50 p-6 shadow-[0_28px_90px_rgba(19,34,56,0.08)] backdrop-blur sm:p-8 lg:p-10">
+        <Reveal className="rounded-[1.85rem] bg-[#10233c] p-6 text-white sm:p-8">
+          <p className="w-fit rounded-full bg-white/10 px-4 py-2 text-sm font-semibold uppercase tracking-[0.18em] text-white/86">
+            Session unavailable
+          </p>
+          <h1 className="mt-4 max-w-3xl font-display text-4xl tracking-[-0.05em] sm:text-5xl">
+            The session page could not load from the database yet.
+          </h1>
+          <p className="mt-4 max-w-2xl text-sm leading-7 text-white/76 sm:text-base">
+            The most common production cause is that the deployed app is missing
+            the hosted PostgreSQL connection or the schema has not been migrated.
+          </p>
+        </Reveal>
 
-  const session = await db.interviewSession.findUnique({
+        <div className="grid gap-4 lg:grid-cols-[1fr_1fr]">
+          <Reveal delay={120} className="glass-card rounded-[1.6rem] border border-white/60 p-5">
+            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-accent">
+              Check these first
+            </p>
+            <ul className="mt-4 space-y-3 text-sm leading-6 text-foreground">
+              <li>Set `DATABASE_URL` in Vercel using your hosted PostgreSQL project.</li>
+              <li>Run Prisma migrations against the production database.</li>
+              <li>Redeploy after the database is reachable.</li>
+            </ul>
+          </Reveal>
+
+          <Reveal delay={200} className="glass-card rounded-[1.6rem] border border-white/60 p-5">
+            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-highlight">
+              What to do next
+            </p>
+            <div className="mt-4 flex flex-col gap-3">
+              <Link
+                href="/"
+                className="inline-flex items-center justify-center rounded-[1.2rem] bg-accent px-4 py-3 text-sm font-semibold text-white transition hover:bg-accent-strong"
+              >
+                Return to setup
+              </Link>
+            </div>
+          </Reveal>
+        </div>
+      </section>
+    </main>
+  );
+}
+
+async function loadInterviewSession(sessionId: string) {
+  return db.interviewSession.findUnique({
     where: { id: sessionId },
     include: {
       user: true,
@@ -28,6 +71,22 @@ export default async function InterviewSessionPage({
       resume: true,
     },
   });
+}
+
+export default async function InterviewSessionPage({
+  params,
+}: {
+  params: Promise<{ sessionId: string }>;
+}) {
+  const { sessionId } = await params;
+
+  let session: Awaited<ReturnType<typeof loadInterviewSession>> = null;
+
+  try {
+    session = await loadInterviewSession(sessionId);
+  } catch {
+    return <SessionLoadError />;
+  }
 
   if (!session) {
     notFound();
@@ -39,26 +98,28 @@ export default async function InterviewSessionPage({
   );
 
   return (
-    <main className="min-h-screen bg-[linear-gradient(180deg,#f8f3ea_0%,#f4efe4_55%,#efe5d2_100%)] px-5 py-8 sm:px-8 lg:px-12">
-      <section className="mx-auto flex max-w-6xl flex-col gap-6 rounded-[2rem] border border-line bg-panel-strong/95 p-6 shadow-[0_28px_90px_rgba(19,34,56,0.08)] sm:p-8 lg:p-10">
-        <div className="flex flex-col gap-4 rounded-[1.75rem] bg-foreground px-6 py-7 text-white">
-          <p className="w-fit rounded-full bg-white/10 px-4 py-2 text-sm font-semibold uppercase tracking-[0.18em]">
+    <main className="relative overflow-hidden px-5 py-8 sm:px-8 lg:px-12">
+      <div className="pointer-events-none absolute left-[-6rem] top-16 h-56 w-56 rounded-full bg-[#ff8c61]/18 blur-3xl float-soft" />
+      <div className="pointer-events-none absolute right-[-4rem] top-28 h-72 w-72 rounded-full bg-[#1c7891]/14 blur-3xl float-delayed" />
+
+      <section className="mx-auto flex max-w-6xl flex-col gap-6 rounded-[2rem] border border-white/50 bg-white/48 p-6 shadow-[0_28px_90px_rgba(19,34,56,0.08)] backdrop-blur sm:p-8 lg:p-10">
+        <Reveal className="rounded-[1.9rem] bg-[#10233c] p-6 text-white shadow-[0_26px_70px_rgba(16,35,60,0.3)] sm:p-8">
+          <p className="w-fit rounded-full bg-white/10 px-4 py-2 text-sm font-semibold uppercase tracking-[0.18em] text-white/86">
             Interview session created
           </p>
-          <div className="space-y-3">
-            <h1 className="text-3xl font-semibold tracking-[-0.04em] sm:text-4xl">
-              Your interview setup has been saved and is ready for question generation.
+          <div className="mt-5 space-y-3">
+            <h1 className="max-w-3xl font-display text-4xl tracking-[-0.05em] sm:text-5xl">
+              Your interview setup is saved and ready for question generation.
             </h1>
-            <p className="max-w-3xl text-sm leading-7 text-white/78 sm:text-base">
-              This page confirms the role context we saved. The next feature pass
-              will generate the full 10-question interview and move the user into
-              a live session flow.
+            <p className="max-w-2xl text-sm leading-7 text-white/76 sm:text-base">
+              This preview confirms the saved role context and prepares the app
+              for the next stage: generating the 10-question practice interview.
             </p>
           </div>
-        </div>
+        </Reveal>
 
-        <div className="grid gap-6 lg:grid-cols-[0.95fr_1.05fr]">
-          <div className="rounded-[1.5rem] border border-line bg-panel p-5">
+        <div className="grid gap-5 lg:grid-cols-[0.92fr_1.08fr]">
+          <Reveal delay={120} className="glass-card rounded-[1.65rem] border border-white/60 p-5">
             <p className="text-sm font-semibold uppercase tracking-[0.18em] text-accent">
               Saved context
             </p>
@@ -86,14 +147,14 @@ export default async function InterviewSessionPage({
                 <dd className="font-mono text-xs text-muted">{session.id}</dd>
               </div>
             </dl>
-          </div>
+          </Reveal>
 
-          <div className="rounded-[1.5rem] border border-line bg-panel-strong p-5">
-            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-accent">
+          <Reveal delay={200} className="glass-card rounded-[1.65rem] border border-white/60 p-5">
+            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-highlight">
               Interview preview
             </p>
             <div className="mt-4 space-y-4">
-              <div className="rounded-2xl border border-line bg-panel px-4 py-4">
+              <div className="rounded-[1.3rem] border border-line bg-white/72 px-4 py-4">
                 <p className="text-sm font-semibold text-foreground">
                   Job specification
                 </p>
@@ -102,7 +163,7 @@ export default async function InterviewSessionPage({
                 </p>
               </div>
 
-              <div className="rounded-2xl border border-line bg-panel px-4 py-4">
+              <div className="rounded-[1.3rem] border border-line bg-white/72 px-4 py-4">
                 <p className="text-sm font-semibold text-foreground">
                   Question preview
                 </p>
@@ -113,38 +174,38 @@ export default async function InterviewSessionPage({
                 </ul>
               </div>
 
-              <div className="rounded-2xl border border-line bg-[linear-gradient(180deg,rgba(209,104,63,0.08),rgba(255,255,255,0.72))] px-4 py-4">
+              <div className="rounded-[1.3rem] border border-[#ff8c61]/18 bg-[linear-gradient(180deg,rgba(255,124,73,0.08),rgba(255,255,255,0.74))] px-4 py-4">
                 <p className="text-sm font-semibold text-foreground">
                   Resume captured
                 </p>
                 <p className="mt-2 text-sm leading-6 text-muted">
-                  {session.resume?.parsedText?.slice(0, 260) ?? "No resume text saved."}
-                  {session.resume?.parsedText && session.resume.parsedText.length > 260
+                  {session.resume?.parsedText?.slice(0, 260) ??
+                    "No resume text saved."}
+                  {session.resume?.parsedText &&
+                  session.resume.parsedText.length > 260
                     ? "..."
                     : ""}
                 </p>
               </div>
             </div>
-          </div>
+          </Reveal>
         </div>
 
-        <div className="flex flex-col gap-3 rounded-[1.5rem] border border-line bg-panel p-5 sm:flex-row sm:items-center sm:justify-between">
+        <Reveal delay={260} className="glass-card flex flex-col gap-3 rounded-[1.6rem] border border-white/60 p-5 sm:flex-row sm:items-center sm:justify-between">
           <div className="space-y-1">
-            <p className="text-sm font-semibold text-foreground">
-              Next build step
-            </p>
+            <p className="text-sm font-semibold text-foreground">Next build step</p>
             <p className="text-sm leading-6 text-muted">
-              Generate all 10 questions, store them in the session, and begin the
-              answer-and-feedback experience.
+              Generate all 10 questions, store them in the session, and begin
+              the answer-and-feedback experience.
             </p>
           </div>
           <Link
             href="/"
-            className="inline-flex items-center justify-center rounded-2xl bg-accent px-4 py-3 text-sm font-semibold text-white transition hover:bg-accent-strong"
+            className="inline-flex items-center justify-center rounded-[1.2rem] bg-accent px-4 py-3 text-sm font-semibold text-white transition hover:bg-accent-strong"
           >
             Back to setup
           </Link>
-        </div>
+        </Reveal>
       </section>
     </main>
   );

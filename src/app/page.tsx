@@ -3,12 +3,17 @@ import {
   interviewFields,
   onboardingHighlights,
 } from "@/lib/interview-config";
+import { Reveal } from "@/components/reveal";
+
 import { createInterviewSession } from "./actions";
 
 const errorMessages: Record<string, string> = {
-  "missing-fields": "Please complete the required fields and provide a resume as PDF, TXT, or pasted text before creating an interview session.",
-  "save-failed": "We could not save the interview setup. Check that PostgreSQL is running and the schema has been migrated.",
-  "unsupported-resume-format": "Resume upload currently supports PDF and TXT files. You can also paste resume text directly.",
+  "missing-fields":
+    "Please complete the required fields and provide a resume as PDF, TXT, or pasted text before creating an interview session.",
+  "save-failed":
+    "We could not save the interview setup. In deployment, this usually means the hosted PostgreSQL connection is missing or migrations have not been run yet.",
+  "unsupported-resume-format":
+    "Resume upload currently supports PDF and TXT files. You can also paste resume text directly.",
 };
 
 export default async function Home({
@@ -20,76 +25,97 @@ export default async function Home({
   const error = params?.error ? errorMessages[params.error] : null;
 
   return (
-    <main className="min-h-screen bg-[radial-gradient(circle_at_top_left,rgba(209,104,63,0.18),transparent_28%),linear-gradient(180deg,#f8f3ea_0%,#f4efe4_52%,#efe5d2_100%)] px-5 py-6 sm:px-8 lg:px-12">
-      <section className="mx-auto flex max-w-7xl flex-col gap-6 rounded-[2rem] border border-line bg-panel-strong/90 p-5 shadow-[0_28px_90px_rgba(19,34,56,0.08)] backdrop-blur sm:p-8 lg:p-10">
-        <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr] lg:items-start">
-          <div className="flex flex-col gap-6 rounded-[1.75rem] bg-foreground px-6 py-7 text-white sm:px-8">
-            <div className="space-y-4">
-              <p className="w-fit rounded-full bg-white/10 px-4 py-2 text-sm font-semibold tracking-[0.2em] text-white uppercase">
-                AI Interview Helper
-              </p>
+    <main className="relative overflow-hidden px-5 py-6 sm:px-8 lg:px-12">
+      <div className="pointer-events-none absolute left-[-6rem] top-20 h-56 w-56 rounded-full bg-[#ff8c61]/18 blur-3xl float-soft" />
+      <div className="pointer-events-none absolute right-[-5rem] top-40 h-72 w-72 rounded-full bg-[#1c7891]/16 blur-3xl float-delayed" />
+
+      <section className="mx-auto flex max-w-7xl flex-col gap-6 rounded-[2.2rem] border border-white/50 bg-white/44 p-4 shadow-[0_30px_120px_rgba(19,34,56,0.08)] backdrop-blur md:p-6 lg:p-8">
+        <div className="grid gap-6 lg:grid-cols-[1.04fr_0.96fr]">
+          <Reveal className="rounded-[2rem] bg-[#10233c] p-6 text-white shadow-[0_26px_70px_rgba(16,35,60,0.34)] sm:p-8">
+            <div className="space-y-6">
+              <div className="flex flex-wrap items-center gap-3">
+                <span className="rounded-full border border-white/12 bg-white/8 px-4 py-2 text-xs font-semibold uppercase tracking-[0.24em] text-white/86">
+                  AI Interview Helper
+                </span>
+                <span className="rounded-full bg-[#ff8c61]/16 px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-[#ffbc9f]">
+                  Mock interview platform
+                </span>
+              </div>
+
               <div className="space-y-4">
-                <h1 className="max-w-2xl text-4xl font-semibold tracking-[-0.05em] sm:text-5xl lg:text-6xl">
-                  Build stronger interview confidence with an app that practices like a real interviewer.
+                <h1 className="max-w-3xl font-display text-5xl leading-[0.95] tracking-[-0.06em] sm:text-6xl lg:text-7xl">
+                  Build interview confidence with a sharper, more human practice experience.
                 </h1>
-                <p className="max-w-2xl text-base leading-7 text-white/72 sm:text-lg">
-                  We are turning your product idea into a guided interview coach
-                  for students, job seekers, and career changers. This first
-                  screen captures the exact context we need to generate smarter,
-                  more relevant interview questions.
+                <p className="max-w-2xl text-sm leading-7 text-white/72 sm:text-base">
+                  Personalized question generation, resume-aware coaching, and a
+                  more polished path from job target to live practice session.
                 </p>
               </div>
-            </div>
 
-            <div className="grid gap-3 sm:grid-cols-2">
-              {coachingSignals.map((signal) => (
-                <div
-                  key={signal}
-                  className="rounded-2xl border border-white/12 bg-white/6 px-4 py-4 text-sm leading-6 text-white/78"
-                >
-                  {signal}
-                </div>
-              ))}
-            </div>
-
-            <div className="rounded-[1.5rem] border border-white/12 bg-white/8 p-5">
-              <p className="text-sm font-semibold uppercase tracking-[0.18em] text-white/70">
-                Session plan
-              </p>
-              <ol className="mt-4 space-y-3 text-sm leading-6 text-white/78">
-                {onboardingHighlights.map((item, index) => (
-                  <li key={item} className="flex gap-3">
-                    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-white/12 text-xs font-semibold">
-                      {index + 1}
-                    </span>
-                    <span>{item}</span>
-                  </li>
+              <div className="grid gap-3 sm:grid-cols-2">
+                {coachingSignals.map((signal, index) => (
+                  <Reveal
+                    key={signal}
+                    delay={index * 80}
+                    className="rounded-[1.35rem] border border-white/10 bg-white/7 px-4 py-4 text-sm leading-6 text-white/78"
+                  >
+                    {signal}
+                  </Reveal>
                 ))}
-              </ol>
-            </div>
-          </div>
+              </div>
 
-          <div className="rounded-[1.75rem] border border-line bg-panel p-6 sm:p-7">
-            <div className="flex flex-col gap-2">
-              <p className="text-sm font-semibold uppercase tracking-[0.18em] text-accent">
-                Start an interview
+              <div className="grid gap-4 lg:grid-cols-[0.95fr_1.05fr]">
+                <div className="rounded-[1.5rem] border border-white/10 bg-white/7 p-5">
+                  <p className="text-sm font-semibold uppercase tracking-[0.18em] text-white/68">
+                    Session plan
+                  </p>
+                  <ol className="mt-4 space-y-3 text-sm leading-6 text-white/78">
+                    {onboardingHighlights.map((item, index) => (
+                      <li key={item} className="flex gap-3">
+                        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-white/10 text-xs font-semibold">
+                          {index + 1}
+                        </span>
+                        <span>{item}</span>
+                      </li>
+                    ))}
+                  </ol>
+                </div>
+
+                <div className="rounded-[1.5rem] border border-white/10 bg-[linear-gradient(180deg,rgba(255,124,73,0.16),rgba(255,255,255,0.05))] p-5 pulse-glow">
+                  <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[#ffbc9f]">
+                    Product direction
+                  </p>
+                  <p className="mt-4 text-sm leading-7 text-white/76">
+                    The next version will generate the 10-question interview,
+                    save performance data, and move users into a timed practice
+                    flow with voice and coaching.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </Reveal>
+
+          <Reveal delay={100} className="glass-card rounded-[2rem] border border-white/60 p-6 shadow-[0_24px_60px_rgba(19,34,56,0.08)] sm:p-8">
+            <div className="space-y-3">
+              <p className="text-sm font-semibold uppercase tracking-[0.2em] text-accent">
+                Start the setup
               </p>
-              <h2 className="text-2xl font-semibold tracking-[-0.03em]">
-                Create the first guided interview profile
+              <h2 className="font-display text-4xl tracking-[-0.05em] text-foreground sm:text-5xl">
+                Create an interview profile that feels tailored from the beginning.
               </h2>
-              <p className="max-w-xl text-sm leading-6 text-muted sm:text-base">
-                We’ll use these inputs to generate role-specific interview
-                questions and prepare the session flow.
+              <p className="max-w-xl text-sm leading-7 text-muted sm:text-base">
+                Users can choose the field, add job context, upload a resume,
+                and move into a real interview session structure.
               </p>
             </div>
 
             {error ? (
-              <div className="mt-6 rounded-2xl border border-[rgba(168,72,37,0.22)] bg-[rgba(209,104,63,0.08)] px-4 py-4 text-sm leading-6 text-accent-strong">
+              <div className="mt-6 rounded-[1.5rem] border border-[#ff8c61]/26 bg-[#ff8c61]/9 px-4 py-4 text-sm leading-6 text-accent-strong">
                 {error}
               </div>
             ) : null}
 
-            <form action={createInterviewSession} className="mt-6 space-y-6">
+            <form action={createInterviewSession} className="mt-8 space-y-6">
               <div className="grid gap-4 sm:grid-cols-2">
                 <label className="space-y-2">
                   <span className="text-sm font-semibold text-foreground">
@@ -99,7 +125,7 @@ export default async function Home({
                     type="text"
                     name="candidateName"
                     placeholder="Tenzin Kunga"
-                    className="w-full rounded-2xl border border-line bg-panel-strong px-4 py-3 text-sm text-foreground outline-none transition placeholder:text-muted focus:border-accent"
+                    className="w-full rounded-[1.2rem] border border-line bg-white/84 px-4 py-3 text-sm text-foreground outline-none transition placeholder:text-muted focus:border-accent"
                   />
                 </label>
 
@@ -111,37 +137,36 @@ export default async function Home({
                     type="email"
                     name="email"
                     placeholder="you@example.com"
-                    className="w-full rounded-2xl border border-line bg-panel-strong px-4 py-3 text-sm text-foreground outline-none transition placeholder:text-muted focus:border-accent"
+                    className="w-full rounded-[1.2rem] border border-line bg-white/84 px-4 py-3 text-sm text-foreground outline-none transition placeholder:text-muted focus:border-accent"
                   />
                 </label>
               </div>
 
               <div className="space-y-3">
-                <label className="text-sm font-semibold text-foreground">
+                <p className="text-sm font-semibold text-foreground">
                   1. Choose the interview field
-                </label>
+                </p>
                 <div className="grid gap-3 sm:grid-cols-2">
-                  {interviewFields.map((field) => (
-                    <label
-                      key={field.id}
-                      className="group flex cursor-pointer gap-3 rounded-2xl border border-line bg-panel-strong px-4 py-4 transition hover:border-accent/55 hover:bg-accent/5"
-                    >
-                      <input
-                        type="radio"
-                        name="field"
-                        value={field.id}
-                        defaultChecked={field.id === "technology"}
-                        className="mt-1 h-4 w-4 border-line text-accent focus:ring-accent"
-                      />
-                      <span className="space-y-1">
-                        <span className="block text-sm font-semibold text-foreground">
-                          {field.label}
+                  {interviewFields.map((field, index) => (
+                    <Reveal key={field.id} delay={index * 60} className="h-full">
+                      <label className="flex h-full cursor-pointer gap-3 rounded-[1.4rem] border border-line bg-white/80 px-4 py-4 transition hover:border-accent/55 hover:bg-[#fff4ef]">
+                        <input
+                          type="radio"
+                          name="field"
+                          value={field.id}
+                          defaultChecked={field.id === "technology"}
+                          className="mt-1 h-4 w-4 border-line text-accent focus:ring-accent"
+                        />
+                        <span className="space-y-1">
+                          <span className="block text-sm font-semibold text-foreground">
+                            {field.label}
+                          </span>
+                          <span className="block text-sm leading-6 text-muted">
+                            {field.description}
+                          </span>
                         </span>
-                        <span className="block text-sm leading-6 text-muted">
-                          {field.description}
-                        </span>
-                      </span>
-                    </label>
+                      </label>
+                    </Reveal>
                   ))}
                 </div>
               </div>
@@ -155,7 +180,7 @@ export default async function Home({
                     type="text"
                     name="jobTitle"
                     placeholder="Junior Software Engineer"
-                    className="w-full rounded-2xl border border-line bg-panel-strong px-4 py-3 text-sm text-foreground outline-none transition placeholder:text-muted focus:border-accent"
+                    className="w-full rounded-[1.2rem] border border-line bg-white/84 px-4 py-3 text-sm text-foreground outline-none transition placeholder:text-muted focus:border-accent"
                   />
                 </label>
 
@@ -167,7 +192,7 @@ export default async function Home({
                     type="text"
                     name="companyName"
                     placeholder="Airbnb"
-                    className="w-full rounded-2xl border border-line bg-panel-strong px-4 py-3 text-sm text-foreground outline-none transition placeholder:text-muted focus:border-accent"
+                    className="w-full rounded-[1.2rem] border border-line bg-white/84 px-4 py-3 text-sm text-foreground outline-none transition placeholder:text-muted focus:border-accent"
                   />
                 </label>
               </div>
@@ -180,38 +205,38 @@ export default async function Home({
                   rows={6}
                   name="jobDescription"
                   placeholder="Paste the responsibilities, requirements, preferred qualifications, and company expectations here."
-                  className="w-full rounded-[1.5rem] border border-line bg-panel-strong px-4 py-3 text-sm leading-6 text-foreground outline-none transition placeholder:text-muted focus:border-accent"
+                  className="w-full rounded-[1.45rem] border border-line bg-white/84 px-4 py-3 text-sm leading-6 text-foreground outline-none transition placeholder:text-muted focus:border-accent"
                 />
               </label>
 
-              <div className="grid gap-4 lg:grid-cols-[1fr_1fr]">
+              <div className="grid gap-4 lg:grid-cols-[0.95fr_1.05fr]">
                 <label className="block space-y-2">
                   <span className="text-sm font-semibold text-foreground">
                     5. Resume text fallback
                   </span>
                   <textarea
-                    rows={7}
+                    rows={8}
                     name="resumeText"
-                    placeholder="Paste the resume only if the user does not upload a PDF or TXT file."
-                    className="w-full rounded-[1.5rem] border border-line bg-panel-strong px-4 py-3 text-sm leading-6 text-foreground outline-none transition placeholder:text-muted focus:border-accent"
+                    placeholder="Paste the resume here only when a file upload is not available."
+                    className="w-full rounded-[1.45rem] border border-line bg-white/84 px-4 py-3 text-sm leading-6 text-foreground outline-none transition placeholder:text-muted focus:border-accent"
                   />
                 </label>
 
-                <div className="space-y-4 rounded-[1.5rem] border border-dashed border-accent/35 bg-[linear-gradient(180deg,rgba(209,104,63,0.08),rgba(255,255,255,0.6))] p-5">
+                <div className="rounded-[1.5rem] border border-[#ff8c61]/20 bg-[linear-gradient(180deg,rgba(255,124,73,0.08),rgba(255,255,255,0.74))] p-5">
                   <div className="space-y-2">
                     <p className="text-sm font-semibold uppercase tracking-[0.18em] text-accent">
                       Resume intake
                     </p>
-                    <h3 className="text-xl font-semibold tracking-[-0.03em] text-foreground">
+                    <h3 className="font-display text-3xl tracking-[-0.05em] text-foreground">
                       Upload the resume directly
                     </h3>
-                    <p className="text-sm leading-6 text-muted">
-                      The app now accepts PDF and TXT uploads. If no file is
-                      available, pasted text still works as a fallback.
+                    <p className="text-sm leading-7 text-muted">
+                      PDF and TXT upload are supported now. Pasted text still
+                      works as a fallback for quick testing.
                     </p>
                   </div>
 
-                  <label className="block space-y-2">
+                  <label className="mt-5 block space-y-2">
                     <span className="text-sm font-semibold text-foreground">
                       Resume file
                     </span>
@@ -219,14 +244,14 @@ export default async function Home({
                       type="file"
                       name="resumeFile"
                       accept=".pdf,.txt,application/pdf,text/plain"
-                      className="block w-full rounded-2xl border border-line bg-panel-strong px-4 py-3 text-sm text-foreground file:mr-4 file:rounded-xl file:border-0 file:bg-accent file:px-3 file:py-2 file:text-sm file:font-semibold file:text-white"
+                      className="block w-full rounded-[1.2rem] border border-line bg-white/84 px-4 py-3 text-sm text-foreground file:mr-4 file:rounded-xl file:border-0 file:bg-accent file:px-3 file:py-2 file:text-sm file:font-semibold file:text-white"
                     />
                   </label>
 
-                  <div className="rounded-2xl border border-line bg-panel-strong px-4 py-4 text-sm leading-6 text-foreground">
+                  <div className="mt-5 rounded-[1.35rem] border border-line bg-white/76 px-4 py-4 text-sm leading-6 text-foreground">
                     Current support:
                     <ul className="mt-2 space-y-2 text-muted">
-                      <li>PDF resume upload and text extraction</li>
+                      <li>PDF resume upload and extraction</li>
                       <li>TXT resume upload</li>
                       <li>Pasted text fallback</li>
                       <li>Saved parsed text for session generation</li>
@@ -235,57 +260,56 @@ export default async function Home({
 
                   <button
                     type="submit"
-                    className="w-full rounded-2xl bg-accent px-4 py-3 text-sm font-semibold text-white transition hover:bg-accent-strong"
+                    className="mt-5 w-full rounded-[1.2rem] bg-accent px-4 py-3 text-sm font-semibold text-white transition hover:bg-accent-strong"
                   >
                     Save interview session
                   </button>
                 </div>
               </div>
             </form>
-          </div>
+          </Reveal>
         </div>
 
-        <div className="grid gap-4 lg:grid-cols-[0.95fr_1.05fr]">
-          <div className="rounded-[1.5rem] border border-line bg-panel p-5">
-            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-accent">
-              What the app will do next
+        <div className="grid gap-4 lg:grid-cols-[0.92fr_1.08fr]">
+          <Reveal delay={120} className="glass-card rounded-[1.7rem] border border-white/60 p-5">
+            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-highlight">
+              Production note
             </p>
-            <div className="mt-4 space-y-3 text-sm leading-6 text-foreground">
+            <div className="mt-4 space-y-3 text-sm leading-7 text-foreground">
               <p>
-                The first submitted profile will create a reusable interview
-                context in the database and start the user’s first interview
-                session.
+                If Vercel shows a server-side error after submitting the form,
+                the most likely cause is missing database configuration in
+                production rather than a broken UI route.
               </p>
               <p className="text-muted">
-                After that, we’ll generate 10 tailored questions, store them in
-                PostgreSQL, and wire the session screen for answer capture and
-                feedback.
+                Add the hosted PostgreSQL `DATABASE_URL`, run Prisma migrations
+                against that database, then redeploy.
               </p>
             </div>
-          </div>
+          </Reveal>
 
-          <div className="rounded-[1.5rem] border border-line bg-panel-strong p-5">
+          <Reveal delay={200} className="glass-card rounded-[1.7rem] border border-white/60 p-5">
             <p className="text-sm font-semibold uppercase tracking-[0.18em] text-accent">
               Already built
             </p>
             <div className="mt-4 grid gap-3 sm:grid-cols-2">
               {[
-                "Next.js app scaffold",
-                "Prisma client setup",
-                "PostgreSQL schema",
-                "Question history model",
-                "GitHub-connected repo",
-                "Vercel-safe Next.js patch level",
+                "Modern Next.js app scaffold",
+                "Resume upload with PDF parsing",
+                "Prisma and PostgreSQL schema",
+                "Session creation flow",
+                "Session preview route",
+                "Security-patched Next.js release",
               ].map((item) => (
                 <div
                   key={item}
-                  className="rounded-2xl border border-line bg-panel px-4 py-4 text-sm leading-6 text-foreground"
+                  className="rounded-[1.3rem] border border-line bg-white/72 px-4 py-4 text-sm leading-6 text-foreground"
                 >
                   {item}
                 </div>
               ))}
             </div>
-          </div>
+          </Reveal>
         </div>
       </section>
     </main>
