@@ -4,6 +4,7 @@ import { InterviewScene } from "@/components/interview-scene";
 import { InterviewSetupForm } from "@/components/interview-setup-form";
 import {
   coachingSignals,
+  tutorialSteps,
 } from "@/lib/interview-config";
 
 const errorMessages: Record<string, string> = {
@@ -11,6 +12,10 @@ const errorMessages: Record<string, string> = {
     "Please complete the required fields and provide a resume as PDF, TXT, or pasted text before creating an interview session.",
   "save-failed":
     "We could not save the interview setup. In deployment, this usually means the hosted PostgreSQL connection is missing or migrations have not been run yet.",
+  "saved-profile-email-required":
+    "Add the same email from your earlier session before using the saved profile option.",
+  "saved-profile-not-found":
+    "We could not find a saved profile for that email yet. Start with a full first session once, then you can reuse it later.",
   "duplicate-session":
     "This interview setup already exists in the database for you. Open the saved session instead of creating a duplicate.",
   "unsupported-resume-format":
@@ -81,6 +86,30 @@ export default async function Home({
               <span className="font-semibold text-foreground"> Tab </span>
               to accept suggestions in supported fields.
             </p>
+          </div>
+
+          <div className="mt-6 rounded-[1.7rem] border border-line bg-white/76 p-5">
+            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-accent">
+              How it works
+            </p>
+            <div className="mt-4 grid gap-3">
+              {tutorialSteps.map((step, index) => (
+                <div
+                  key={step.title}
+                  className="rounded-[1.3rem] border border-[#10233c]/8 bg-[#10233c]/4 px-4 py-4"
+                >
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-accent">
+                    Step {index + 1}
+                  </p>
+                  <p className="mt-2 text-sm font-semibold text-foreground">
+                    {step.title}
+                  </p>
+                  <p className="mt-1 text-sm leading-6 text-muted">
+                    {step.description}
+                  </p>
+                </div>
+              ))}
+            </div>
           </div>
 
           <InterviewSetupForm error={error} />

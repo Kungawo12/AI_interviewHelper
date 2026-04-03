@@ -25,22 +25,72 @@ function normalizeForComparison(value: string | null | undefined) {
 
 export async function createInterviewSession(formData: FormData) {
   const fieldValue = readValue(formData, "field");
-  const field = fieldTypeMap[fieldValue];
+  let field = fieldTypeMap[fieldValue];
   const candidateName = readValue(formData, "candidateName");
   const email = readValue(formData, "email");
-  const jobTitle = readValue(formData, "jobTitle");
+  let jobTitle = readValue(formData, "jobTitle");
   const companyName = readValue(formData, "companyName");
   const jobDescription = readValue(formData, "jobDescription");
   const pastedResumeText = readValue(formData, "resumeText");
   const resumeFile = formData.get("resumeFile");
+  const useSavedProfile = formData.get("useSavedProfile") === "on";
 
-  const uploadedResume =
+  let uploadedResume =
     resumeFile instanceof File ? await parseResumeUpload(resumeFile) : null;
-  const normalizedPastedResumeText = pastedResumeText.trim();
-  const hasResumeInput =
+  let normalizedPastedResumeText = pastedResumeText.trim();
+  let hasResumeInput =
     normalizedPastedResumeText.length > 0 || uploadedResume !== null;
-  const resumeContent =
+  let resumeContent =
     uploadedResume?.parsedText || normalizedPastedResumeText || "";
+
+  let savedProfile:
+    | {
+        field: FieldType;
+        jobTitle: string;
+        resumeText: string;
+      }
+    | null = null;
+
+  if (useSavedProfile) {
+    if (!email) {
+      redirect("/?error=saved-profile-email-required");
+    }
+
+    const latestSession = await db.interviewSession.findFirst({
+      where: {
+        user: {
+          email,
+        },
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+      include: {
+        interviewProfile: true,
+        resume: true,
+      },
+    });
+
+    const savedResumeText =
+      latestSession?.resume?.parsedText || latestSession?.resume?.rawText || "";
+
+    if (!latestSession || !savedResumeText) {
+      redirect("/?error=saved-profile-not-found");
+    }
+
+    savedProfile = {
+      field: latestSession.interviewProfile.field,
+      jobTitle: latestSession.interviewProfile.jobTitle,
+      resumeText: savedResumeText,
+    };
+
+    field = savedProfile.field;
+    jobTitle = jobTitle || savedProfile.jobTitle;
+    normalizedPastedResumeText = normalizedPastedResumeText || savedProfile.resumeText;
+    resumeContent = resumeContent || savedProfile.resumeText;
+    hasResumeInput = true;
+    uploadedResume = null;
+  }
 
   if (
     !field ||

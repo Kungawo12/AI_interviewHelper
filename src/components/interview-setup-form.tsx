@@ -21,6 +21,10 @@ function valueOf(form: HTMLFormElement, name: string) {
 }
 
 function formIsReady(form: HTMLFormElement) {
+  const useSavedProfileField = form.elements.namedItem("useSavedProfile");
+  const useSavedProfile =
+    useSavedProfileField instanceof HTMLInputElement && useSavedProfileField.checked;
+  const email = valueOf(form, "email");
   const jobTitle = valueOf(form, "jobTitle");
   const companyName = valueOf(form, "companyName");
   const jobDescription = valueOf(form, "jobDescription");
@@ -29,6 +33,12 @@ function formIsReady(form: HTMLFormElement) {
   const hasResumeFile =
     resumeFileField instanceof HTMLInputElement &&
     (resumeFileField.files?.length ?? 0) > 0;
+
+  if (useSavedProfile) {
+    return (
+      email.length > 0 && companyName.length > 0 && jobDescription.length > 0
+    );
+  }
 
   return (
     jobTitle.length > 0 &&
@@ -39,7 +49,11 @@ function formIsReady(form: HTMLFormElement) {
 }
 
 function focusFirstMissingField(form: HTMLFormElement) {
+  const useSavedProfileField = form.elements.namedItem("useSavedProfile");
+  const useSavedProfile =
+    useSavedProfileField instanceof HTMLInputElement && useSavedProfileField.checked;
   const orderedNames = [
+    "email",
     "jobTitle",
     "companyName",
     "jobDescription",
@@ -49,6 +63,10 @@ function focusFirstMissingField(form: HTMLFormElement) {
 
   for (const name of orderedNames) {
     const field = form.elements.namedItem(name);
+
+    if (useSavedProfile && (name === "jobTitle" || name === "resumeFile" || name === "resumeText")) {
+      continue;
+    }
 
     if (name === "resumeFile" || name === "resumeText") {
       const resumeText = valueOf(form, "resumeText");
@@ -80,6 +98,11 @@ function focusFirstMissingField(form: HTMLFormElement) {
 export function InterviewSetupForm({ error }: InterviewSetupFormProps) {
   const formRef = useRef<HTMLFormElement | null>(null);
   const [warning, setWarning] = useState<string | null>(null);
+  const [useSavedProfile, setUseSavedProfile] = useState(false);
+
+  const requirementMessage = useSavedProfile
+    ? "Enter your saved email, company name, and job description to reuse your previous profile and resume."
+    : "Complete the required fields before continuing. Job title, company name, job description, and a resume are required.";
 
   return (
     <form
@@ -92,9 +115,7 @@ export function InterviewSetupForm({ error }: InterviewSetupFormProps) {
 
         if (!ready) {
           event.preventDefault();
-          setWarning(
-            "Complete the required fields before continuing. Job title, company name, job description, and a resume are required.",
-          );
+          setWarning(requirementMessage);
           if (form) {
             focusFirstMissingField(form);
           }
@@ -142,6 +163,27 @@ export function InterviewSetupForm({ error }: InterviewSetupFormProps) {
         </label>
       </div>
 
+      <div className="rounded-[1.5rem] border border-[#10233c]/10 bg-[#10233c]/5 px-4 py-4">
+        <label className="flex cursor-pointer items-start gap-3">
+          <input
+            type="checkbox"
+            name="useSavedProfile"
+            checked={useSavedProfile}
+            onChange={(event) => setUseSavedProfile(event.target.checked)}
+            className="mt-1 h-4 w-4 border-line text-accent focus:ring-accent"
+          />
+          <span className="space-y-1">
+            <span className="block text-sm font-semibold text-foreground">
+              Use my saved profile and resume
+            </span>
+            <span className="block text-sm leading-6 text-muted">
+              Best for returning users. Add the same email you used before, then
+              only update the company name and job description for the new role.
+            </span>
+          </span>
+        </label>
+      </div>
+
       <div className="space-y-4">
         <p className="text-sm font-semibold uppercase tracking-[0.16em] text-highlight">
           Select the field
@@ -164,7 +206,9 @@ export function InterviewSetupForm({ error }: InterviewSetupFormProps) {
                   {field.label}
                 </span>
                 <span className="block text-sm leading-6 text-muted">
-                  {field.description}
+                  {useSavedProfile
+                    ? "Your saved field will be reused when a matching profile is found."
+                    : field.description}
                 </span>
               </span>
             </label>
@@ -180,10 +224,12 @@ export function InterviewSetupForm({ error }: InterviewSetupFormProps) {
           <input
             type="text"
             name="jobTitle"
-            required
+            required={!useSavedProfile}
             list="job-title-suggestions"
             autoComplete="organization-title"
-            placeholder="Start typing a role"
+            placeholder={
+              useSavedProfile ? "Optional when reusing a saved profile" : "Start typing a role"
+            }
             className="w-full rounded-[1.2rem] border border-line bg-white/84 px-4 py-3 text-sm text-foreground outline-none transition placeholder:text-muted focus:border-accent"
           />
           <datalist id="job-title-suggestions">
@@ -192,7 +238,9 @@ export function InterviewSetupForm({ error }: InterviewSetupFormProps) {
             ))}
           </datalist>
           <p className="text-xs text-muted">
-            Browser suggestions appear as you type.
+            {useSavedProfile
+              ? "Leave this blank to reuse the title from your previous saved session."
+              : "Browser suggestions appear as you type."}
           </p>
         </label>
 
@@ -247,6 +295,7 @@ export function InterviewSetupForm({ error }: InterviewSetupFormProps) {
                 type="file"
                 name="resumeFile"
                 accept=".pdf,.txt,application/pdf,text/plain"
+                disabled={useSavedProfile}
                 className="block w-full rounded-[1.2rem] border border-line bg-white/84 px-4 py-3 text-sm text-foreground file:mr-4 file:rounded-xl file:border-0 file:bg-accent file:px-3 file:py-2 file:text-sm file:font-semibold file:text-white"
               />
             </label>
@@ -258,7 +307,12 @@ export function InterviewSetupForm({ error }: InterviewSetupFormProps) {
               <textarea
                 rows={8}
                 name="resumeText"
-                placeholder="Use this only when no PDF or TXT file is available."
+                disabled={useSavedProfile}
+                placeholder={
+                  useSavedProfile
+                    ? "Your saved resume will be reused from your previous session."
+                    : "Use this only when no PDF or TXT file is available."
+                }
                 className="w-full rounded-[1.4rem] border border-line bg-white/84 px-4 py-4 text-sm leading-7 text-foreground outline-none transition placeholder:text-muted focus:border-accent"
               />
             </label>
@@ -272,10 +326,10 @@ export function InterviewSetupForm({ error }: InterviewSetupFormProps) {
           <div className="mt-5 rounded-[1.35rem] border border-line bg-white/76 px-4 py-4 text-sm leading-6 text-foreground">
             Required before continuing:
             <ul className="mt-2 space-y-2 text-muted">
-              <li>Job title</li>
+              <li>{useSavedProfile ? "Email used in your previous session" : "Job title"}</li>
               <li>Company name</li>
               <li>Job description</li>
-              <li>Resume file or resume text</li>
+              <li>{useSavedProfile ? "Saved profile and resume" : "Resume file or resume text"}</li>
             </ul>
           </div>
 
@@ -291,9 +345,7 @@ export function InterviewSetupForm({ error }: InterviewSetupFormProps) {
               const ready = formIsReady(form);
 
               if (!ready) {
-                setWarning(
-                  "Complete the required fields before continuing. Job title, company name, job description, and a resume are required.",
-                );
+                setWarning(requirementMessage);
                 focusFirstMissingField(form);
                 return;
               }

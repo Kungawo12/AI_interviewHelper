@@ -41,6 +41,24 @@ export const coachingSignals = [
   "Progress memory to reduce repeats",
 ] as const;
 
+export const tutorialSteps = [
+  {
+    title: "First session",
+    description:
+      "Add your role, company target, job description, and resume once so the app can build your personal interview base.",
+  },
+  {
+    title: "Start interview",
+    description:
+      "Open the session, press Start interview, and answer one question at a time while the timer runs through the full practice round.",
+  },
+  {
+    title: "Come back faster",
+    description:
+      "On your next session, reuse your saved profile and resume so you only update the new company name and job description.",
+  },
+] as const;
+
 export const jobTitleSuggestions = [
   "Junior Software Engineer",
   "Frontend Developer",
