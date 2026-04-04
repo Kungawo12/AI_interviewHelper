@@ -51,13 +51,21 @@ export async function POST(request: Request) {
       pitch:         interviewerId === "female" ? -2.0 : 0.0,
     };
 
+    // Wrap in SSML to add natural pauses at sentence boundaries and commas.
+    // This single change makes synthesised speech sound dramatically more human.
+    const ssmlText = text
+      .replace(/([.!?])\s+/g, "$1<break time=\"380ms\"/> ")
+      .replace(/,\s+/g, ",<break time=\"160ms\"/> ")
+      .replace(/:\s+/g, ":<break time=\"200ms\"/> ");
+    const ssml = `<speak>${ssmlText}</speak>`;
+
     const response = await fetch(
       `https://texttospeech.googleapis.com/v1/text:synthesize?key=${googleKey}`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          input:       { text },
+          input:       { ssml },
           voice:       { languageCode: "en-US", name: voice.name, ssmlGender: voice.ssmlGender },
           audioConfig,
         }),
