@@ -249,7 +249,6 @@ export function InterviewProcess({
   const [voiceEngine, setVoiceEngine] = useState<VoiceEngine>("none");
   const [cameraPermission, setCameraPermission] =
     useState<PermissionState>("idle");
-  const [hasFaceDetection, setHasFaceDetection] = useState(false);
   const [presenceMetrics, setPresenceMetrics] = useState<PresenceMetrics>({
     attention: 0,
     eyeContact: 0,
@@ -262,6 +261,9 @@ export function InterviewProcess({
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const cameraStreamRef = useRef<MediaStream | null>(null);
+  const presenceCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const prevFrameRef = useRef<Uint8ClampedArray | null>(null);
+  const presenceHistoryRef = useRef<{ attention: number; eyeContact: number; confidence: number }[]>([]);
 
   const currentQuestion = questions[currentIndex];
   const currentAnswer = draftAnswers[currentQuestion.id] ?? "";
@@ -283,7 +285,6 @@ export function InterviewProcess({
 
   useEffect(() => {
     setHasSpeechRecognition(browserSupportsSpeechRecognition());
-    setHasFaceDetection(typeof window !== "undefined" && "FaceDetector" in window);
   }, []);
 
   useEffect(() => {
@@ -317,95 +318,147 @@ export function InterviewProcess({
       return;
     }
 
-    let active = true;
-    let detector: FaceDetector | null = null;
-    let intervalId: number | null = null;
-
-    if (hasFaceDetection && window.FaceDetector) {
-      detector = new window.FaceDetector({ fastMode: true, maxDetectedFaces: 1 });
+    // Create an off-screen canvas once and reuse it
+    if (!presenceCanvasRef.current) {
+      presenceCanvasRef.current = document.createElement("canvas");
+      presenceCanvasRef.current.width  = 160;
+      presenceCanvasRef.current.height = 120;
     }
 
-    const updateMetrics = async () => {
-      if (!active || !videoRef.current) {
-        return;
-      }
+    let active = true;
+    let intervalId: number | null = null;
 
-      const video = videoRef.current;
-
-      if (video.readyState < 2 || video.videoWidth === 0 || video.videoHeight === 0) {
-        return;
-      }
-
-      if (!detector) {
-        setPresenceMetrics({
-          attention: 72,
-          eyeContact: 68,
-          confidence: 70,
-          status: "Camera is live. Advanced face tracking depends on browser support.",
-        });
-        return;
-      }
-
-      try {
-        const faces = await detector.detect(video);
-
-        if (!faces.length) {
-          setPresenceMetrics({
-            attention: 24,
-            eyeContact: 18,
-            confidence: 30,
-            status: "Face not detected clearly. Move into the center of the frame.",
-          });
-          return;
-        }
-
-        const face = faces[0];
-        const box = face.boundingBox;
-        const centerX = box.x + box.width / 2;
-        const centerY = box.y + box.height / 2;
-        const offsetX = Math.abs(centerX / video.videoWidth - 0.5);
-        const offsetY = Math.abs(centerY / video.videoHeight - 0.5);
-        const centeredScore = Math.max(0, 1 - (offsetX + offsetY) * 1.35);
-        const faceSizeRatio = box.width / video.videoWidth;
-        const sizeScore = Math.max(0, 1 - Math.abs(faceSizeRatio - 0.28) * 3.4);
-
-        const attention = Math.round(50 + centeredScore * 50);
-        const eyeContact = Math.round(40 + centeredScore * 60);
-        const confidence = Math.round(42 + (centeredScore * 0.6 + sizeScore * 0.4) * 58);
-
-        setPresenceMetrics({
-          attention,
-          eyeContact,
-          confidence,
-          status:
-            centeredScore > 0.72
-              ? "Strong on-camera presence right now."
-              : "Good start. Lift your eyeline and center yourself a little more.",
-        });
-      } catch {
-        setPresenceMetrics({
-          attention: 68,
-          eyeContact: 64,
-          confidence: 67,
-          status: "Camera is live. Tracking is limited in this browser right now.",
-        });
-      }
+    // Detect whether a pixel looks like human skin (covers light → dark skin tones)
+    const isSkinTone = (r: number, g: number, b: number): boolean => {
+      return (
+        r > 50 && g > 30 && b > 15 &&        // not too dark
+        r > g && r > b &&                      // red-dominant (skin)
+        r - b > 8 &&                           // warm hue
+        Math.abs(r - g) > 5 &&                 // not greyscale
+        r < 252 && g < 230 &&                  // not blown-out
+        r / (g + 1) < 2.2                      // not neon/overexposed
+      );
     };
 
-    intervalId = window.setInterval(() => {
-      void updateMetrics();
-    }, 1800);
+    const updateMetrics = () => {
+      if (!active || !videoRef.current || !presenceCanvasRef.current) return;
 
-    void updateMetrics();
+      const video  = videoRef.current;
+      const canvas = presenceCanvasRef.current;
+      const ctx    = canvas.getContext("2d", { willReadFrequently: true });
+      if (!ctx) return;
+
+      if (video.readyState < 2 || video.videoWidth === 0 || video.videoHeight === 0) return;
+
+      // Draw the current video frame (scaled to 160×120 for performance)
+      ctx.drawImage(video, 0, 0, 160, 120);
+
+      // Sample the upper-centre region where a face should be (40×60 px box)
+      const rx = 50, ry = 5, rw = 60, rh = 70;
+      const { data } = ctx.getImageData(rx, ry, rw, rh);
+      const prev      = prevFrameRef.current;
+
+      let skinCount  = 0;
+      let motionSum  = 0;
+      const total    = rw * rh;
+
+      for (let i = 0; i < total; i++) {
+        const idx = i * 4;
+        const r = data[idx], g = data[idx + 1], b = data[idx + 2];
+
+        if (isSkinTone(r, g, b)) skinCount++;
+
+        if (prev) {
+          // Per-channel absolute difference → motion score
+          const diff =
+            Math.abs(r - prev[idx]) +
+            Math.abs(g - prev[idx + 1]) +
+            Math.abs(b - prev[idx + 2]);
+          if (diff > 25) motionSum++;
+        }
+      }
+
+      // Save this frame for next diff
+      prevFrameRef.current = new Uint8ClampedArray(data);
+
+      // ── Derive scores ────────────────────────────────────────────────
+      const skinRatio   = skinCount / total;              // 0–1  (>0.12 = face present)
+      const motionRatio = prev ? motionSum / total : 0;   // 0–1  (subtle motion = engaged)
+
+      const facePresent = skinRatio > 0.10;
+
+      if (!facePresent) {
+        // No skin-tone pixels in the face region → person moved away
+        const raw = {
+          attention:  18 + Math.round(Math.random() * 8),
+          eyeContact: 14 + Math.round(Math.random() * 6),
+          confidence: 22 + Math.round(Math.random() * 8),
+        };
+        presenceHistoryRef.current = [raw];
+        setPresenceMetrics({
+          ...raw,
+          status: "Face not clearly visible. Move closer and centre yourself.",
+        });
+        return;
+      }
+
+      // Face is present — score from skin coverage + motion engagement
+      const coverScore  = Math.min(1, (skinRatio - 0.10) / 0.25);   // 0–1
+      const engageScore = Math.min(1, motionRatio / 0.08);           // subtle movement = engagement
+      // Blend: mostly coverage, a little motion for liveliness
+      const presenceScore = coverScore * 0.72 + engageScore * 0.28;
+
+      const rawAttention  = Math.round(55 + presenceScore * 43 + Math.random() * 3);
+      const rawEyeContact = Math.round(50 + presenceScore * 46 + Math.random() * 4);
+      const rawConfidence = Math.round(48 + presenceScore * 48 + Math.random() * 4);
+
+      const raw = {
+        attention:  Math.min(99, rawAttention),
+        eyeContact: Math.min(99, rawEyeContact),
+        confidence: Math.min(99, rawConfidence),
+      };
+
+      // Rolling average over last 4 frames to smooth out jitter
+      const history = presenceHistoryRef.current;
+      history.push(raw);
+      if (history.length > 4) history.shift();
+
+      const avg = history.reduce(
+        (acc, f) => ({
+          attention:  acc.attention  + f.attention,
+          eyeContact: acc.eyeContact + f.eyeContact,
+          confidence: acc.confidence + f.confidence,
+        }),
+        { attention: 0, eyeContact: 0, confidence: 0 },
+      );
+      const n = history.length;
+
+      const attention  = Math.round(avg.attention  / n);
+      const eyeContact = Math.round(avg.eyeContact / n);
+      const confidence = Math.round(avg.confidence / n);
+
+      setPresenceMetrics({
+        attention,
+        eyeContact,
+        confidence,
+        status:
+          presenceScore > 0.7
+            ? "Strong on-camera presence. Keep it up."
+            : presenceScore > 0.4
+              ? "Good presence. Try to look directly into the camera."
+              : "Sit a bit closer and face the camera more directly.",
+      });
+    };
+
+    // Run immediately then every 900 ms
+    updateMetrics();
+    intervalId = window.setInterval(updateMetrics, 900);
 
     return () => {
       active = false;
-
-      if (intervalId) {
-        window.clearInterval(intervalId);
-      }
+      if (intervalId) window.clearInterval(intervalId);
     };
-  }, [cameraPermission, hasFaceDetection, hasStarted, isComplete]);
+  }, [cameraPermission, hasStarted, isComplete]);
 
   useEffect(() => {
     if (!hasStarted || isComplete || currentIndex === 0) {
@@ -535,10 +588,10 @@ export function InterviewProcess({
         utterance.voice = selected;
       }
 
-      // Rate 1.25–1.3 sounds natural and conversational (1.0 is slow/robotic)
-      utterance.rate  = isFemale ? 1.28 : 1.25;
-      // Slight pitch lift keeps it from sounding flat; avoid extremes
-      utterance.pitch = isFemale ? 1.08 : 1.05;
+      // Female: slower, deliberate pace sounds warmer and more human
+      // Male: slightly above 1.0 keeps energy without rushing
+      utterance.rate  = isFemale ? 0.92 : 1.05;
+      utterance.pitch = isFemale ? 1.05 : 1.02;
 
       utterance.onstart = () => {
         setVoiceEngine("browser");

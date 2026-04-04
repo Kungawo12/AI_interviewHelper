@@ -5,12 +5,12 @@ type VoiceRequest = {
   interviewerId?: "female" | "male";
 };
 
-// Google Cloud Journey voices — conversational, natural American English
-// Journey voices are purpose-built for human-sounding dialogue (vs Neural2 which is more robotic)
-// en-US-Journey-O = warm, expressive American female — more natural than Journey-F
-// en-US-Journey-D = natural, confident American male (Marcus)
+// Google Cloud TTS voices
+// en-US-Studio-O  = studio-recorded female — warmest, most human-sounding Google voice
+//                   Recorded by a real voice actor in a professional studio
+// en-US-Journey-D = conversational male — natural and confident American English
 const googleVoiceConfig = {
-  female: { name: "en-US-Journey-O", ssmlGender: "FEMALE" },
+  female: { name: "en-US-Studio-O", ssmlGender: "FEMALE" },
   male:   { name: "en-US-Journey-D", ssmlGender: "MALE"   },
 } as const;
 
@@ -52,9 +52,11 @@ export async function POST(request: Request) {
           input:       { text },
           voice:       { languageCode: "en-US", name: voice.name, ssmlGender: voice.ssmlGender },
           audioConfig: {
-            audioEncoding: "MP3",
-            speakingRate: interviewerId === "female" ? 1.05 : 1.05,
-            pitch: interviewerId === "female" ? 1.0 : 0.0,
+            audioEncoding:    "MP3",
+            speakingRate:     interviewerId === "female" ? 0.90 : 1.02,
+            pitch:            interviewerId === "female" ? 0.0  : 0.0,
+            volumeGainDb:     0.0,
+            effectsProfileId: ["headphone-class-device"],
           },
         }),
       },
