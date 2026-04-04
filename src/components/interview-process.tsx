@@ -683,6 +683,15 @@ export function InterviewProcess({
   }
 
   async function handleStartInterview() {
+    // Unlock browser speech synthesis immediately — must happen synchronously
+    // inside the user gesture (button click) before any await breaks the context.
+    // Without this, Chrome silently blocks speechSynthesis.speak().
+    if (typeof window !== "undefined" && window.speechSynthesis) {
+      window.speechSynthesis.cancel();
+      window.speechSynthesis.speak(new SpeechSynthesisUtterance(""));
+      window.speechSynthesis.cancel();
+    }
+
     await Promise.all([requestMicrophonePermission(), requestCameraPermission()]);
     setHasDeliveredIntroduction(true);
     setHasStarted(true);
@@ -1103,7 +1112,14 @@ export function InterviewProcess({
           <div className="mt-5 flex flex-wrap gap-3">
             <button
               type="button"
-              onClick={() => speakQuestion(currentQuestion.questionText)}
+              onClick={() => {
+                if (typeof window !== "undefined" && window.speechSynthesis) {
+                  window.speechSynthesis.cancel();
+                  window.speechSynthesis.speak(new SpeechSynthesisUtterance(""));
+                  window.speechSynthesis.cancel();
+                }
+                speakQuestion(currentQuestion.questionText);
+              }}
               className="rounded-[1.1rem] border border-line bg-white/84 px-4 py-3 text-sm font-semibold text-foreground transition hover:bg-white"
             >
               Read question aloud
