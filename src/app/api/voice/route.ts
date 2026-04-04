@@ -6,16 +6,17 @@ type VoiceRequest = {
 };
 
 // Google Cloud TTS voices
-// en-US-Chirp3-HD-Aoede = Google's newest LLM-based voice (2025). Ranked #1 for
-//   conversational naturalness. Controls like speakingRate/pitch are NOT supported —
-//   the model handles prosody automatically.
-// en-US-Journey-D = conversational male, natural American English, supports speakingRate.
+// en-US-Neural2-H = second Neural2 female voice — completely different timbre from F,
+//   deeper and warmer. Fully supports speakingRate + pitch tuning.
+//   Rate 0.82 = slow, deliberate, human-paced delivery.
+//   Pitch -2.0 = lowers it off the shrill range, sounds much more natural.
+// en-US-Journey-D = conversational male, natural American English.
 const googleVoiceConfig = {
-  female: { name: "en-US-Chirp3-HD-Aoede", ssmlGender: "FEMALE", supportsAudioConfig: false },
-  male:   { name: "en-US-Journey-D",        ssmlGender: "MALE",   supportsAudioConfig: true  },
+  female: { name: "en-US-Neural2-H", ssmlGender: "FEMALE" },
+  male:   { name: "en-US-Journey-D", ssmlGender: "MALE"   },
 } as const;
 
-// ElevenLabs voice IDs — 10,000 chars/month free
+// ElevenLabs fallback
 const elevenLabsVoiceConfig = {
   female: { voiceId: "21m00Tcm4TlvDq8ikWAM" }, // Rachel
   male:   { voiceId: "pNInz6obpgDQGcFmaJgB" }, // Adam
@@ -44,15 +45,11 @@ export async function POST(request: Request) {
   if (googleKey) {
     const voice = googleVoiceConfig[interviewerId];
 
-    // Chirp3-HD voices manage prosody automatically — sending rate/pitch causes errors.
-    // Journey/Neural2/Studio voices accept audioConfig tuning.
-    const audioConfig = voice.supportsAudioConfig
-      ? {
-          audioEncoding: "MP3",
-          speakingRate:  interviewerId === "male" ? 1.02 : 0.90,
-          pitch:         0.0,
-        }
-      : { audioEncoding: "MP3" };
+    const audioConfig = {
+      audioEncoding: "MP3",
+      speakingRate:  interviewerId === "female" ? 0.82 : 1.02,
+      pitch:         interviewerId === "female" ? -2.0 : 0.0,
+    };
 
     const response = await fetch(
       `https://texttospeech.googleapis.com/v1/text:synthesize?key=${googleKey}`,
