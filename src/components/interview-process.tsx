@@ -460,16 +460,38 @@ export function InterviewProcess({
 
     const applyVoice = () => {
       const voices = window.speechSynthesis.getVoices();
-      const preferred = voices.find((v) =>
-        isFemale
-          ? /samantha|victoria|karen|moira|tessa|fiona|female|zira/i.test(v.name)
-          : /daniel|alex|fred|oliver|google uk english male|david/i.test(v.name),
-      );
-      if (preferred) {
-        utterance.voice = preferred;
+      const enVoices = voices.filter((v) => v.lang.startsWith("en"));
+
+      let selected: SpeechSynthesisVoice | undefined;
+
+      if (isFemale) {
+        // 1. Preferred by name — high-quality local voices first
+        selected = enVoices.find((v) =>
+          /samantha|google us english|zira|victoria|karen|moira|tessa|fiona/i.test(v.name),
+        );
+        // 2. Any voice with a female gender hint in the name
+        selected ??= enVoices.find((v) => /female|woman/i.test(v.name));
+        // 3. Any en-US voice as fallback
+        selected ??= enVoices.find((v) => v.lang === "en-US");
+      } else {
+        // 1. Preferred by name — natural male voices
+        selected = enVoices.find((v) =>
+          /google uk english male|daniel|alex|fred|oliver|david|aaron/i.test(v.name),
+        );
+        // 2. Any voice with a male gender hint in the name
+        selected ??= enVoices.find((v) => /male|man/i.test(v.name));
+        // 3. Any en-US voice as fallback
+        selected ??= enVoices.find((v) => v.lang === "en-US");
       }
-      utterance.pitch = isFemale ? 1.1 : 0.82;
-      utterance.rate = 0.9;
+
+      if (selected) {
+        utterance.voice = selected;
+      }
+
+      // Rate 1.25–1.3 sounds natural and conversational (1.0 is slow/robotic)
+      utterance.rate  = isFemale ? 1.28 : 1.25;
+      // Slight pitch lift keeps it from sounding flat; avoid extremes
+      utterance.pitch = isFemale ? 1.08 : 1.05;
 
       utterance.onstart = () => {
         setVoiceEngine("browser");
