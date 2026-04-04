@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 type InterviewQuestion = {
@@ -49,10 +50,11 @@ function InterviewerFigure({
   return (
     <div className="relative h-full min-h-[340px] overflow-hidden rounded-[2rem] bg-[#0d1827] shadow-[0_30px_80px_rgba(7,18,32,0.38)]">
       {/* Photo fills the frame */}
-      <img
+      <Image
         src={photo}
         alt={name}
-        className={`absolute inset-0 h-full w-full object-cover object-top transition-all duration-300 ${
+        fill
+        className={`object-cover object-top transition-all duration-300 ${
           isSpeaking ? "scale-[1.02]" : "scale-100"
         }`}
       />
@@ -195,7 +197,7 @@ export function InterviewProcess({
   const [interimTranscript, setInterimTranscript] = useState("");
   const [selectedInterviewerId, setSelectedInterviewerId] =
     useState<InterviewerOption["id"]>("female");
-  const [hasDeliveredIntroduction, setHasDeliveredIntroduction] = useState(false);
+
   const [hasSpeechRecognition, setHasSpeechRecognition] = useState(false);
   const [voiceEngine, setVoiceEngine] = useState<VoiceEngine>("none");
   const [cameraPermission, setCameraPermission] =
@@ -693,7 +695,6 @@ export function InterviewProcess({
     }
 
     await Promise.all([requestMicrophonePermission(), requestCameraPermission()]);
-    setHasDeliveredIntroduction(true);
     setHasStarted(true);
     speakIntroductionAndQuestion(questions[0].questionText);
   }
@@ -702,7 +703,6 @@ export function InterviewProcess({
     stopListening();
     stopSpeaking();
     setHasStarted(false);
-    setHasDeliveredIntroduction(false);
     setIsComplete(false);
     setElapsedSeconds(0);
     setCurrentIndex(0);
@@ -790,9 +790,11 @@ export function InterviewProcess({
                       }`}
                     >
                       <div className="flex items-center gap-3">
-                        <img
+                        <Image
                           src={option.photo}
                           alt={option.name}
+                          width={48}
+                          height={48}
                           className="h-12 w-12 rounded-full object-cover object-top border-2 border-white/20"
                         />
                         <div>
