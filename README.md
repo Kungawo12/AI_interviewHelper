@@ -61,7 +61,7 @@ npm run dev
 
 Open `http://localhost:3000` in your browser.
 
-## Cloud Database And Deployment
+
 
 Use a hosted PostgreSQL database for production.
 
