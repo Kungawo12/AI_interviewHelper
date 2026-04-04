@@ -401,7 +401,7 @@ export function InterviewProcess({
     }
   }
 
-  async function speakText(text: string, notice: string, mode: "intro" | "question") {
+  async function speakText(text: string, notice: string) {
     stopSpeaking();
 
     try {
@@ -413,7 +413,6 @@ export function InterviewProcess({
         body: JSON.stringify({
           text,
           interviewerId: selectedInterviewer.id,
-          mode,
         }),
       });
 
@@ -468,7 +467,6 @@ export function InterviewProcess({
     void speakText(
       questionText,
       `${selectedInterviewer.name} is asking the next interview question.`,
-      "question",
     );
   }
 
@@ -483,7 +481,6 @@ export function InterviewProcess({
     void speakText(
       `${intro} First question. ${questionText}`,
       `${selectedInterviewer.name} is introducing the interview and setting expectations.`,
-      "intro",
     );
   }
 

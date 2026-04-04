@@ -3,19 +3,14 @@ import { NextResponse } from "next/server";
 type VoiceRequest = {
   text?: string;
   interviewerId?: "female" | "male";
-  mode?: "intro" | "question";
 };
 
 const voiceConfig = {
   female: {
     voice: "nova",
-    style:
-      "Speak like a calm, warm, highly professional interviewer in a realistic video interview. Sound natural, polished, human, and reassuring.",
   },
   male: {
     voice: "onyx",
-    style:
-      "Speak like a confident, composed, highly professional interviewer in a realistic live interview. Sound natural, polished, human, and measured.",
   },
 } as const;
 
@@ -39,17 +34,12 @@ export async function POST(request: Request) {
 
   const text = body.text?.trim();
   const interviewerId = body.interviewerId === "male" ? "male" : "female";
-  const mode = body.mode === "intro" ? "intro" : "question";
 
   if (!text) {
     return NextResponse.json({ error: "Text is required." }, { status: 400 });
   }
 
   const selected = voiceConfig[interviewerId];
-  const instructions =
-    mode === "intro"
-      ? `${selected.style} Deliver a polished interview introduction with a welcoming but professional tone.`
-      : `${selected.style} Ask the interview question clearly and naturally, like a real human interviewer in a live interview.`;
 
   const response = await fetch("https://api.openai.com/v1/audio/speech", {
     method: "POST",
@@ -58,12 +48,10 @@ export async function POST(request: Request) {
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      model: "gpt-4o-mini-tts",
+      model: "tts-1-hd",
       voice: selected.voice,
       input: text,
-      instructions,
       response_format: "mp3",
-      speed: 0.96,
     }),
   });
 
