@@ -59,11 +59,11 @@ function InterviewerFigure({
       <div className="absolute inset-x-0 bottom-0 top-[18%] flex items-end justify-center">
         <svg viewBox="0 0 320 420" className="h-[92%] w-full max-w-[380px]">
           <defs>
-            <linearGradient id="suitTone" x1="0" x2="1">
+            <linearGradient id={`suitTone-${interviewerId}`} x1="0" x2="1">
               <stop offset="0%" stopColor={isFemale ? "#b55640" : "#1c3150"} />
               <stop offset="100%" stopColor={isFemale ? "#7e3f34" : "#10233c"} />
             </linearGradient>
-            <linearGradient id="skinTone" x1="0" x2="1">
+            <linearGradient id={`skinTone-${interviewerId}`} x1="0" x2="1">
               <stop offset="0%" stopColor="#f4d2b8" />
               <stop offset="100%" stopColor="#eeb996" />
             </linearGradient>
@@ -72,15 +72,15 @@ function InterviewerFigure({
           <ellipse cx="160" cy="392" rx="92" ry="18" fill="rgba(8,15,26,0.28)" />
           <path
             d={isFemale ? "M98 382 C106 300, 124 254, 160 254 C196 254, 214 300, 222 382 Z" : "M94 382 C104 302, 126 260, 160 260 C194 260, 216 302, 226 382 Z"}
-            fill="url(#suitTone)"
+            fill={`url(#suitTone-${interviewerId})`}
           />
           <path
             d={isFemale ? "M128 256 L160 290 L192 256" : "M134 262 L160 292 L186 262"}
             fill={isFemale ? "#f6efe9" : "#dce7f2"}
           />
           <rect x="150" y="290" width="20" height="74" rx="10" fill={isFemale ? "#953f31" : "#0b1a2d"} />
-          <path d="M146 232 C146 218, 174 218, 174 232 L174 260 C174 270, 146 270, 146 260 Z" fill="url(#skinTone)" />
-          <ellipse cx="160" cy="150" rx="62" ry="76" fill="url(#skinTone)" />
+          <path d="M146 232 C146 218, 174 218, 174 232 L174 260 C174 270, 146 270, 146 260 Z" fill={`url(#skinTone-${interviewerId})`} />
+          <ellipse cx="160" cy="150" rx="62" ry="76" fill={`url(#skinTone-${interviewerId})`} />
           <path
             d={
               isFemale
@@ -115,8 +115,8 @@ function InterviewerFigure({
             strokeLinejoin="round"
           />
           <path d="M144 136 Q152 128 160 132 Q168 128 176 136" stroke="#3a2b23" strokeWidth="4" fill="none" strokeLinecap="round" />
-          <path d="M112 274 C108 246, 114 230, 132 224" stroke="url(#suitTone)" strokeWidth="22" strokeLinecap="round" fill="none" />
-          <path d="M208 274 C212 246, 206 230, 188 224" stroke="url(#suitTone)" strokeWidth="22" strokeLinecap="round" fill="none" />
+          <path d="M112 274 C108 246, 114 230, 132 224" stroke={`url(#suitTone-${interviewerId})`} strokeWidth="22" strokeLinecap="round" fill="none" />
+          <path d="M208 274 C212 246, 206 230, 188 224" stroke={`url(#suitTone-${interviewerId})`} strokeWidth="22" strokeLinecap="round" fill="none" />
         </svg>
       </div>
 
@@ -375,21 +375,15 @@ export function InterviewProcess({
   }, [cameraPermission, hasFaceDetection, hasStarted, isComplete]);
 
   useEffect(() => {
-    if (!hasStarted || isComplete) {
+    if (!hasStarted || isComplete || currentIndex === 0) {
       return;
     }
 
-    if (!hasDeliveredIntroduction && currentIndex === 0) {
-      return;
-    }
-
-    if (currentIndex > 0 || hasDeliveredIntroduction) {
-      speakQuestion(currentQuestion.questionText);
-    }
+    speakQuestion(currentQuestion.questionText);
     setInterimTranscript("");
     stopListening();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentIndex, hasDeliveredIntroduction, hasStarted, isComplete]);
+  }, [currentIndex, hasStarted, isComplete]);
 
   function stopSpeaking() {
     if (audioRef.current) {
@@ -407,7 +401,7 @@ export function InterviewProcess({
     }
   }
 
-  async function speakText(text: string, notice: string, mode: "intro" | "question") {
+  async function speakText(text: string, notice: string) {
     stopSpeaking();
 
     try {
@@ -419,7 +413,6 @@ export function InterviewProcess({
         body: JSON.stringify({
           text,
           interviewerId: selectedInterviewer.id,
-          mode,
         }),
       });
 
@@ -474,7 +467,6 @@ export function InterviewProcess({
     void speakText(
       questionText,
       `${selectedInterviewer.name} is asking the next interview question.`,
-      "question",
     );
   }
 
@@ -489,7 +481,6 @@ export function InterviewProcess({
     void speakText(
       `${intro} First question. ${questionText}`,
       `${selectedInterviewer.name} is introducing the interview and setting expectations.`,
-      "intro",
     );
   }
 
