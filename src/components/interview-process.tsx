@@ -348,17 +348,15 @@ export function InterviewProcess({
 
       if (video.readyState < 2 || video.videoWidth === 0 || video.videoHeight === 0) return;
 
-      // Draw the current video frame (scaled to 160×120 for performance)
+      // Draw full frame scaled down for performance
       ctx.drawImage(video, 0, 0, 160, 120);
+      const { data } = ctx.getImageData(0, 0, 160, 120);
+      const prev = prevFrameRef.current;
 
-      // Sample the upper-centre region where a face should be (40×60 px box)
-      const rx = 50, ry = 5, rw = 60, rh = 70;
-      const { data } = ctx.getImageData(rx, ry, rw, rh);
-      const prev      = prevFrameRef.current;
-
-      let skinCount  = 0;
-      let motionSum  = 0;
-      const total    = rw * rh;
+      // ── Full-frame skin + motion analysis ─────────────────────────────
+      let skinCount    = 0;
+      let motionCount  = 0;
+      const total      = 160 * 120;
 
       for (let i = 0; i < total; i++) {
         const idx = i * 4;
@@ -367,90 +365,62 @@ export function InterviewProcess({
         if (isSkinTone(r, g, b)) skinCount++;
 
         if (prev) {
-          // Per-channel absolute difference → motion score
-          const diff =
-            Math.abs(r - prev[idx]) +
-            Math.abs(g - prev[idx + 1]) +
-            Math.abs(b - prev[idx + 2]);
-          if (diff > 25) motionSum++;
+          const diff = Math.abs(r - prev[idx]) + Math.abs(g - prev[idx + 1]) + Math.abs(b - prev[idx + 2]);
+          // Lower threshold → more sensitive to subtle movement (talking, gesturing)
+          if (diff > 18) motionCount++;
         }
       }
 
-      // Save this frame for next diff
       prevFrameRef.current = new Uint8ClampedArray(data);
 
-      // ── Derive scores ────────────────────────────────────────────────
-      const skinRatio   = skinCount / total;              // 0–1  (>0.12 = face present)
-      const motionRatio = prev ? motionSum / total : 0;   // 0–1  (subtle motion = engaged)
+      const skinRatio   = skinCount / total;
+      const motionRatio = prev ? Math.min(1, motionCount / total / 0.04) : 0; // 0–1, saturates at 4% changed pixels
 
-      const facePresent = skinRatio > 0.10;
+      const facePresent = skinRatio > 0.04; // lower threshold — full frame, not just centre
 
       if (!facePresent) {
-        // No skin-tone pixels in the face region → person moved away
-        const raw = {
-          attention:  18 + Math.round(Math.random() * 8),
-          eyeContact: 14 + Math.round(Math.random() * 6),
-          confidence: 22 + Math.round(Math.random() * 8),
-        };
-        presenceHistoryRef.current = [raw];
+        presenceHistoryRef.current = [];
         setPresenceMetrics({
-          ...raw,
-          status: "Face not clearly visible. Move closer and centre yourself.",
+          attention:  12 + Math.round(Math.random() * 10),
+          eyeContact: 10 + Math.round(Math.random() * 8),
+          confidence: 15 + Math.round(Math.random() * 10),
+          status: "Move closer — face not detected. Centre yourself in the frame.",
         });
         return;
       }
 
-      // Face is present — score from skin coverage + motion engagement
-      const coverScore  = Math.min(1, (skinRatio - 0.10) / 0.25);   // 0–1
-      const engageScore = Math.min(1, motionRatio / 0.08);           // subtle movement = engagement
-      // Blend: mostly coverage, a little motion for liveliness
-      const presenceScore = coverScore * 0.72 + engageScore * 0.28;
+      // ── Scores — wide ranges so they react visibly ──────────────────
+      // Attention:  motion-heavy (talking & nodding pushes it up fast)
+      // Eye contact: skin coverage based (how well-framed the face is)
+      // Confidence:  blend of both
+      const rawAttention  = Math.min(97, Math.round(52 + motionRatio * 44 + skinRatio * 200));
+      const rawEyeContact = Math.min(96, Math.round(48 + skinRatio * 220 + motionRatio * 18));
+      const rawConfidence = Math.min(95, Math.round(46 + skinRatio * 170 + motionRatio * 30));
 
-      const rawAttention  = Math.round(55 + presenceScore * 43 + Math.random() * 3);
-      const rawEyeContact = Math.round(50 + presenceScore * 46 + Math.random() * 4);
-      const rawConfidence = Math.round(48 + presenceScore * 48 + Math.random() * 4);
+      const raw = { attention: rawAttention, eyeContact: rawEyeContact, confidence: rawConfidence };
 
-      const raw = {
-        attention:  Math.min(99, rawAttention),
-        eyeContact: Math.min(99, rawEyeContact),
-        confidence: Math.min(99, rawConfidence),
-      };
-
-      // Rolling average over last 4 frames to smooth out jitter
+      // Light smoothing — only 2-frame average so values react quickly
       const history = presenceHistoryRef.current;
       history.push(raw);
-      if (history.length > 4) history.shift();
+      if (history.length > 2) history.shift();
 
-      const avg = history.reduce(
-        (acc, f) => ({
-          attention:  acc.attention  + f.attention,
-          eyeContact: acc.eyeContact + f.eyeContact,
-          confidence: acc.confidence + f.confidence,
-        }),
-        { attention: 0, eyeContact: 0, confidence: 0 },
-      );
       const n = history.length;
+      const attention  = Math.round(history.reduce((s, f) => s + f.attention,  0) / n);
+      const eyeContact = Math.round(history.reduce((s, f) => s + f.eyeContact, 0) / n);
+      const confidence = Math.round(history.reduce((s, f) => s + f.confidence, 0) / n);
 
-      const attention  = Math.round(avg.attention  / n);
-      const eyeContact = Math.round(avg.eyeContact / n);
-      const confidence = Math.round(avg.confidence / n);
+      const overallScore = (attention + eyeContact + confidence) / 3;
+      const status =
+        overallScore > 78 ? "Strong presence. Eye contact is solid." :
+        overallScore > 60 ? "Good. Keep looking into the camera lens." :
+        "Move closer and keep your face centred in the frame.";
 
-      setPresenceMetrics({
-        attention,
-        eyeContact,
-        confidence,
-        status:
-          presenceScore > 0.7
-            ? "Strong on-camera presence. Keep it up."
-            : presenceScore > 0.4
-              ? "Good presence. Try to look directly into the camera."
-              : "Sit a bit closer and face the camera more directly.",
-      });
+      setPresenceMetrics({ attention, eyeContact, confidence, status });
     };
 
-    // Run immediately then every 900 ms
+    // Run immediately then every 600 ms — faster updates = feels more live
     updateMetrics();
-    intervalId = window.setInterval(updateMetrics, 900);
+    intervalId = window.setInterval(updateMetrics, 600);
 
     return () => {
       active = false;
@@ -1170,6 +1140,7 @@ export function InterviewProcess({
                     muted
                     playsInline
                     className="h-full w-full object-cover"
+                    style={{ transform: "scaleX(-1)" }}
                   />
                   {cameraPermission !== "granted" ? (
                     <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 px-4 text-center">
