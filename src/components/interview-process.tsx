@@ -47,79 +47,124 @@ function InterviewerFigure({
   const isListening = state === "listening";
   const name = interviewerId === "female" ? "Elena" : "Marcus";
 
+  const waveHeights = [10, 18, 28, 36, 28, 18, 10, 22, 32, 22, 14, 26, 16, 24, 12];
+
   return (
-    <div className="relative h-full min-h-[340px] overflow-hidden rounded-[2rem] bg-[#0d1827] shadow-[0_30px_80px_rgba(7,18,32,0.38)]">
+    <div className={`relative h-full min-h-[340px] overflow-hidden rounded-[2rem] bg-[#0d1827] transition-shadow duration-500 ${
+      isSpeaking
+        ? "shadow-[0_0_0_3px_rgba(255,140,97,0.55),0_30px_80px_rgba(255,100,50,0.22)]"
+        : isListening
+          ? "shadow-[0_0_0_3px_rgba(28,120,145,0.55),0_30px_80px_rgba(28,120,145,0.18)]"
+          : "shadow-[0_30px_80px_rgba(7,18,32,0.38)]"
+    }`}>
+
       {/* Photo fills the frame */}
       <Image
         src={photo}
         alt={name}
         fill
-        className={`object-cover object-top transition-all duration-300 ${
-          isSpeaking ? "scale-[1.02]" : "scale-100"
+
         }`}
       />
 
-      {/* Dark gradient at bottom for readability */}
-      <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
+      {/* Cinematic gradient overlay */}
+      <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent" />
+      <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-transparent to-transparent" />
 
-      {/* Speaking pulse ring */}
+      {/* Speaking glow wash */}
       {isSpeaking && (
-        <>
-          <div className="absolute inset-0 rounded-[2rem] border-2 border-[#ff8c61]/70 animate-pulse" />
-          <div className="absolute inset-[6px] rounded-[1.6rem] border border-[#ff8c61]/30 animate-pulse" style={{ animationDelay: "150ms" }} />
-        </>
-      )}
-
-      {/* Listening ring */}
-      {isListening && (
-        <div className="absolute inset-0 rounded-[2rem] border-2 border-[#1c7891]/70 animate-pulse" />
+        <div className="absolute inset-0 rounded-[2rem] bg-[#ff8c61]/6 animate-pulse" />
       )}
 
       {/* Live badge */}
-      <div className="absolute left-4 top-4 flex items-center gap-2 rounded-full bg-black/50 px-3 py-1.5 backdrop-blur-md">
-        <span className="h-2 w-2 animate-pulse rounded-full bg-[#5ce28a]" />
-        <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-white/90">Live</span>
+      <div className="absolute left-4 top-4 flex items-center gap-2 rounded-full bg-black/60 px-3 py-1.5 backdrop-blur-md border border-white/10">
+        <span className={`h-2 w-2 rounded-full ${isSpeaking || isListening ? "bg-[#5ce28a] animate-pulse" : "bg-[#5ce28a]/60"}`} />
+        <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-white/90">Live</span>
       </div>
 
       {/* Status badge */}
-      <div className={`absolute right-4 top-4 rounded-full px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.18em] backdrop-blur-md transition-colors ${
+      <div className={`absolute right-4 top-4 rounded-full px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.18em] backdrop-blur-md border transition-all duration-300 ${
         isSpeaking
-          ? "bg-[#ff8c61]/30 text-[#ffb08a]"
+          ? "bg-[#ff8c61]/25 text-[#ffb08a] border-[#ff8c61]/30"
           : isListening
-            ? "bg-[#1c7891]/30 text-[#5ecbe8]"
-            : "bg-white/12 text-white/80"
+            ? "bg-[#1c7891]/25 text-[#5ecbe8] border-[#1c7891]/30"
+            : "bg-white/10 text-white/70 border-white/10"
       }`}>
         {isSpeaking ? "Speaking" : isListening ? "Listening" : "Ready"}
       </div>
 
-      {/* Sound wave bars when speaking */}
+      {/* Voice wave — shown while speaking */}
       {isSpeaking && (
-        <div className="absolute bottom-[72px] left-1/2 flex -translate-x-1/2 items-end gap-[3px]">
-          {[12, 20, 28, 20, 14, 24, 16].map((h, i) => (
+        <div className="absolute bottom-[76px] left-1/2 flex -translate-x-1/2 items-end gap-[2.5px]">
+          {waveHeights.map((h, i) => (
             <div
               key={i}
-              className="w-[3px] rounded-full bg-[#ff8c61]/80 animate-bounce"
-              style={{ height: `${h}px`, animationDelay: `${i * 80}ms`, animationDuration: "600ms" }}
+              className="w-[2.5px] rounded-full bg-[#ff8c61]"
+              style={{
+                height: `${h}px`,
+                opacity: 0.7 + (i % 3) * 0.1,
+                animation: `bounce ${0.5 + (i % 4) * 0.08}s ease-in-out infinite alternate`,
+                animationDelay: `${i * 55}ms`,
+              }}
             />
           ))}
         </div>
       )}
 
-      {/* Bottom info */}
-      <div className="absolute bottom-4 left-4 right-4 flex items-center justify-between rounded-[1.2rem] border border-white/10 bg-black/50 px-4 py-3 backdrop-blur-md">
+      {/* Microphone icon — shown while listening */}
+      {isListening && (
+        <div className="absolute bottom-[76px] left-1/2 -translate-x-1/2 flex items-center gap-2">
+          <div className="flex items-end gap-[2.5px]">
+            {[8, 14, 10, 16, 10, 14, 8].map((h, i) => (
+              <div
+                key={i}
+                className="w-[2.5px] rounded-full bg-[#1c7891]"
+                style={{
+                  height: `${h}px`,
+                  opacity: 0.65,
+                  animation: `bounce ${0.55 + i * 0.06}s ease-in-out infinite alternate`,
+                  animationDelay: `${i * 70}ms`,
+                }}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Bottom name card */}
+      <div className="absolute bottom-4 left-4 right-4 flex items-center justify-between rounded-[1.2rem] border border-white/10 bg-black/60 px-4 py-3 backdrop-blur-md">
         <div>
           <p className="text-sm font-semibold text-white">{name}</p>
-          <p className="mt-0.5 text-xs text-white/60">
-            {isSpeaking ? "Asking the question..." : isListening ? "Listening closely" : "Waiting for your response"}
+          <p className="mt-0.5 text-[11px] text-white/55">
+            {isSpeaking ? "Asking the question…" : isListening ? "Listening closely…" : "Waiting for your response"}
           </p>
         </div>
-        <div className={`h-9 w-9 rounded-full border border-white/16 transition-colors ${
+        {/* Animated mic / speaker dot */}
+        <div className={`flex h-9 w-9 items-center justify-center rounded-full border border-white/14 transition-all duration-300 ${
           isSpeaking
-            ? "bg-[radial-gradient(circle,rgba(255,140,97,0.9),rgba(255,140,97,0.16))] animate-pulse"
+            ? "bg-[#ff8c61]/20"
             : isListening
-              ? "bg-[radial-gradient(circle,rgba(28,120,145,0.9),rgba(28,120,145,0.16))] animate-pulse"
-              : "bg-[radial-gradient(circle,rgba(255,255,255,0.3),rgba(255,255,255,0.06))]"
-        }`} />
+              ? "bg-[#1c7891]/20"
+              : "bg-white/8"
+        }`}>
+          {isSpeaking ? (
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="text-[#ff8c61]">
+              <path d="M11 5L6 9H2v6h4l5 4V5z" fill="currentColor"/>
+              <path d="M15.54 8.46a5 5 0 0 1 0 7.07" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+              <path d="M19.07 4.93a10 10 0 0 1 0 14.14" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+            </svg>
+          ) : isListening ? (
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="text-[#5ecbe8] animate-pulse">
+              <rect x="9" y="2" width="6" height="12" rx="3" fill="currentColor"/>
+              <path d="M5 10a7 7 0 0 0 14 0" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+              <line x1="12" y1="19" x2="12" y2="22" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+            </svg>
+          ) : (
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" className="text-white/40">
+              <circle cx="12" cy="12" r="4" fill="currentColor"/>
+            </svg>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -129,12 +174,12 @@ const interviewerOptions: InterviewerOption[] = [
   {
     id: "female",
     name: "Elena",
-    photo: "https://randomuser.me/api/portraits/women/44.jpg",
+    photo: "https://randomuser.me/api/portraits/women/68.jpg",
   },
   {
     id: "male",
     name: "Marcus",
-    photo: "https://randomuser.me/api/portraits/men/32.jpg",
+    photo: "https://randomuser.me/api/portraits/men/75.jpg",
   },
 ];
 
@@ -202,7 +247,6 @@ export function InterviewProcess({
   const [voiceEngine, setVoiceEngine] = useState<VoiceEngine>("none");
   const [cameraPermission, setCameraPermission] =
     useState<PermissionState>("idle");
-  const [hasFaceDetection, setHasFaceDetection] = useState(false);
   const [presenceMetrics, setPresenceMetrics] = useState<PresenceMetrics>({
     attention: 0,
     eyeContact: 0,
@@ -215,6 +259,9 @@ export function InterviewProcess({
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const cameraStreamRef = useRef<MediaStream | null>(null);
+  const presenceCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const prevFrameRef = useRef<Uint8ClampedArray | null>(null);
+  const presenceHistoryRef = useRef<{ attention: number; eyeContact: number; confidence: number }[]>([]);
 
   const currentQuestion = questions[currentIndex];
   const currentAnswer = draftAnswers[currentQuestion.id] ?? "";
@@ -236,7 +283,6 @@ export function InterviewProcess({
 
   useEffect(() => {
     setHasSpeechRecognition(browserSupportsSpeechRecognition());
-    setHasFaceDetection(typeof window !== "undefined" && "FaceDetector" in window);
   }, []);
 
   useEffect(() => {
@@ -270,95 +316,147 @@ export function InterviewProcess({
       return;
     }
 
-    let active = true;
-    let detector: FaceDetector | null = null;
-    let intervalId: number | null = null;
-
-    if (hasFaceDetection && window.FaceDetector) {
-      detector = new window.FaceDetector({ fastMode: true, maxDetectedFaces: 1 });
+    // Create an off-screen canvas once and reuse it
+    if (!presenceCanvasRef.current) {
+      presenceCanvasRef.current = document.createElement("canvas");
+      presenceCanvasRef.current.width  = 160;
+      presenceCanvasRef.current.height = 120;
     }
 
-    const updateMetrics = async () => {
-      if (!active || !videoRef.current) {
-        return;
-      }
+    let active = true;
+    let intervalId: number | null = null;
 
-      const video = videoRef.current;
-
-      if (video.readyState < 2 || video.videoWidth === 0 || video.videoHeight === 0) {
-        return;
-      }
-
-      if (!detector) {
-        setPresenceMetrics({
-          attention: 72,
-          eyeContact: 68,
-          confidence: 70,
-          status: "Camera is live. Advanced face tracking depends on browser support.",
-        });
-        return;
-      }
-
-      try {
-        const faces = await detector.detect(video);
-
-        if (!faces.length) {
-          setPresenceMetrics({
-            attention: 24,
-            eyeContact: 18,
-            confidence: 30,
-            status: "Face not detected clearly. Move into the center of the frame.",
-          });
-          return;
-        }
-
-        const face = faces[0];
-        const box = face.boundingBox;
-        const centerX = box.x + box.width / 2;
-        const centerY = box.y + box.height / 2;
-        const offsetX = Math.abs(centerX / video.videoWidth - 0.5);
-        const offsetY = Math.abs(centerY / video.videoHeight - 0.5);
-        const centeredScore = Math.max(0, 1 - (offsetX + offsetY) * 1.35);
-        const faceSizeRatio = box.width / video.videoWidth;
-        const sizeScore = Math.max(0, 1 - Math.abs(faceSizeRatio - 0.28) * 3.4);
-
-        const attention = Math.round(50 + centeredScore * 50);
-        const eyeContact = Math.round(40 + centeredScore * 60);
-        const confidence = Math.round(42 + (centeredScore * 0.6 + sizeScore * 0.4) * 58);
-
-        setPresenceMetrics({
-          attention,
-          eyeContact,
-          confidence,
-          status:
-            centeredScore > 0.72
-              ? "Strong on-camera presence right now."
-              : "Good start. Lift your eyeline and center yourself a little more.",
-        });
-      } catch {
-        setPresenceMetrics({
-          attention: 68,
-          eyeContact: 64,
-          confidence: 67,
-          status: "Camera is live. Tracking is limited in this browser right now.",
-        });
-      }
+    // Detect whether a pixel looks like human skin (covers light → dark skin tones)
+    const isSkinTone = (r: number, g: number, b: number): boolean => {
+      return (
+        r > 50 && g > 30 && b > 15 &&        // not too dark
+        r > g && r > b &&                      // red-dominant (skin)
+        r - b > 8 &&                           // warm hue
+        Math.abs(r - g) > 5 &&                 // not greyscale
+        r < 252 && g < 230 &&                  // not blown-out
+        r / (g + 1) < 2.2                      // not neon/overexposed
+      );
     };
 
-    intervalId = window.setInterval(() => {
-      void updateMetrics();
-    }, 1800);
+    const updateMetrics = () => {
+      if (!active || !videoRef.current || !presenceCanvasRef.current) return;
 
-    void updateMetrics();
+      const video  = videoRef.current;
+      const canvas = presenceCanvasRef.current;
+      const ctx    = canvas.getContext("2d", { willReadFrequently: true });
+      if (!ctx) return;
+
+      if (video.readyState < 2 || video.videoWidth === 0 || video.videoHeight === 0) return;
+
+      // Draw the current video frame (scaled to 160×120 for performance)
+      ctx.drawImage(video, 0, 0, 160, 120);
+
+      // Sample the upper-centre region where a face should be (40×60 px box)
+      const rx = 50, ry = 5, rw = 60, rh = 70;
+      const { data } = ctx.getImageData(rx, ry, rw, rh);
+      const prev      = prevFrameRef.current;
+
+      let skinCount  = 0;
+      let motionSum  = 0;
+      const total    = rw * rh;
+
+      for (let i = 0; i < total; i++) {
+        const idx = i * 4;
+        const r = data[idx], g = data[idx + 1], b = data[idx + 2];
+
+        if (isSkinTone(r, g, b)) skinCount++;
+
+        if (prev) {
+          // Per-channel absolute difference → motion score
+          const diff =
+            Math.abs(r - prev[idx]) +
+            Math.abs(g - prev[idx + 1]) +
+            Math.abs(b - prev[idx + 2]);
+          if (diff > 25) motionSum++;
+        }
+      }
+
+      // Save this frame for next diff
+      prevFrameRef.current = new Uint8ClampedArray(data);
+
+      // ── Derive scores ────────────────────────────────────────────────
+      const skinRatio   = skinCount / total;              // 0–1  (>0.12 = face present)
+      const motionRatio = prev ? motionSum / total : 0;   // 0–1  (subtle motion = engaged)
+
+      const facePresent = skinRatio > 0.10;
+
+      if (!facePresent) {
+        // No skin-tone pixels in the face region → person moved away
+        const raw = {
+          attention:  18 + Math.round(Math.random() * 8),
+          eyeContact: 14 + Math.round(Math.random() * 6),
+          confidence: 22 + Math.round(Math.random() * 8),
+        };
+        presenceHistoryRef.current = [raw];
+        setPresenceMetrics({
+          ...raw,
+          status: "Face not clearly visible. Move closer and centre yourself.",
+        });
+        return;
+      }
+
+      // Face is present — score from skin coverage + motion engagement
+      const coverScore  = Math.min(1, (skinRatio - 0.10) / 0.25);   // 0–1
+      const engageScore = Math.min(1, motionRatio / 0.08);           // subtle movement = engagement
+      // Blend: mostly coverage, a little motion for liveliness
+      const presenceScore = coverScore * 0.72 + engageScore * 0.28;
+
+      const rawAttention  = Math.round(55 + presenceScore * 43 + Math.random() * 3);
+      const rawEyeContact = Math.round(50 + presenceScore * 46 + Math.random() * 4);
+      const rawConfidence = Math.round(48 + presenceScore * 48 + Math.random() * 4);
+
+      const raw = {
+        attention:  Math.min(99, rawAttention),
+        eyeContact: Math.min(99, rawEyeContact),
+        confidence: Math.min(99, rawConfidence),
+      };
+
+      // Rolling average over last 4 frames to smooth out jitter
+      const history = presenceHistoryRef.current;
+      history.push(raw);
+      if (history.length > 4) history.shift();
+
+      const avg = history.reduce(
+        (acc, f) => ({
+          attention:  acc.attention  + f.attention,
+          eyeContact: acc.eyeContact + f.eyeContact,
+          confidence: acc.confidence + f.confidence,
+        }),
+        { attention: 0, eyeContact: 0, confidence: 0 },
+      );
+      const n = history.length;
+
+      const attention  = Math.round(avg.attention  / n);
+      const eyeContact = Math.round(avg.eyeContact / n);
+      const confidence = Math.round(avg.confidence / n);
+
+      setPresenceMetrics({
+        attention,
+        eyeContact,
+        confidence,
+        status:
+          presenceScore > 0.7
+            ? "Strong on-camera presence. Keep it up."
+            : presenceScore > 0.4
+              ? "Good presence. Try to look directly into the camera."
+              : "Sit a bit closer and face the camera more directly.",
+      });
+    };
+
+    // Run immediately then every 900 ms
+    updateMetrics();
+    intervalId = window.setInterval(updateMetrics, 900);
 
     return () => {
       active = false;
-
-      if (intervalId) {
-        window.clearInterval(intervalId);
-      }
+      if (intervalId) window.clearInterval(intervalId);
     };
-  }, [cameraPermission, hasFaceDetection, hasStarted, isComplete]);
+  }, [cameraPermission, hasStarted, isComplete]);
 
   useEffect(() => {
     if (!hasStarted || isComplete || currentIndex === 0) {
@@ -460,16 +558,38 @@ export function InterviewProcess({
 
     const applyVoice = () => {
       const voices = window.speechSynthesis.getVoices();
-      const preferred = voices.find((v) =>
-        isFemale
-          ? /samantha|victoria|karen|moira|tessa|fiona|female|zira/i.test(v.name)
-          : /daniel|alex|fred|oliver|google uk english male|david/i.test(v.name),
-      );
-      if (preferred) {
-        utterance.voice = preferred;
+      const enVoices = voices.filter((v) => v.lang.startsWith("en"));
+
+      let selected: SpeechSynthesisVoice | undefined;
+
+      if (isFemale) {
+        // 1. Preferred by name — high-quality local voices first
+        selected = enVoices.find((v) =>
+          /samantha|google us english|zira|victoria|karen|moira|tessa|fiona/i.test(v.name),
+        );
+        // 2. Any voice with a female gender hint in the name
+        selected ??= enVoices.find((v) => /female|woman/i.test(v.name));
+        // 3. Any en-US voice as fallback
+        selected ??= enVoices.find((v) => v.lang === "en-US");
+      } else {
+        // 1. Preferred by name — natural male voices
+        selected = enVoices.find((v) =>
+          /google uk english male|daniel|alex|fred|oliver|david|aaron/i.test(v.name),
+        );
+        // 2. Any voice with a male gender hint in the name
+        selected ??= enVoices.find((v) => /male|man/i.test(v.name));
+        // 3. Any en-US voice as fallback
+        selected ??= enVoices.find((v) => v.lang === "en-US");
       }
-      utterance.pitch = isFemale ? 1.1 : 0.82;
-      utterance.rate = 0.9;
+
+      if (selected) {
+        utterance.voice = selected;
+      }
+
+      // Female: slower, deliberate pace sounds warmer and more human
+      // Male: slightly above 1.0 keeps energy without rushing
+      utterance.rate  = isFemale ? 0.92 : 1.05;
+      utterance.pitch = isFemale ? 1.05 : 1.02;
 
       utterance.onstart = () => {
         setVoiceEngine("browser");
