@@ -133,8 +133,6 @@ function InterviewerFigure({
 
   const waveHeights = [8, 16, 26, 34, 26, 16, 8, 20, 30, 20, 12, 22, 14];
 
-  const waveHeights = [10, 18, 28, 36, 28, 18, 10, 22, 32, 22, 14, 26, 16, 24, 12];
-
   return (
     <div className={`relative h-full min-h-[340px] overflow-hidden rounded-[2rem] bg-gradient-to-b from-[#0f2035] via-[#0d1a2e] to-[#08111e] transition-shadow duration-500 ${
       isSpeaking
