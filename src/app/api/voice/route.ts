@@ -5,13 +5,14 @@ type VoiceRequest = {
   interviewerId?: "female" | "male";
 };
 
-// Google Cloud Journey voices — conversational, natural American English
-// Journey voices are purpose-built for human-sounding dialogue (vs Neural2 which is more robotic)
-// en-US-Journey-F = natural, warm American female (Elena)
-// en-US-Journey-D = natural, confident American male (Marcus)
+// Google Cloud TTS voices
+// en-US-Chirp3-HD-Aoede = Google's newest LLM-based voice (2025). Ranked #1 for
+//   conversational naturalness. Controls like speakingRate/pitch are NOT supported —
+//   the model handles prosody automatically.
+// en-US-Journey-D = conversational male, natural American English, supports speakingRate.
 const googleVoiceConfig = {
-  female: { name: "en-US-Journey-F", ssmlGender: "FEMALE" },
-  male:   { name: "en-US-Journey-D", ssmlGender: "MALE"   },
+  female: { name: "en-US-Chirp3-HD-Aoede", ssmlGender: "FEMALE", supportsAudioConfig: false },
+  male:   { name: "en-US-Journey-D",        ssmlGender: "MALE",   supportsAudioConfig: true  },
 } as const;
 
 // ElevenLabs voice IDs — 10,000 chars/month free
@@ -43,6 +44,16 @@ export async function POST(request: Request) {
   if (googleKey) {
     const voice = googleVoiceConfig[interviewerId];
 
+    // Chirp3-HD voices manage prosody automatically — sending rate/pitch causes errors.
+    // Journey/Neural2/Studio voices accept audioConfig tuning.
+    const audioConfig = voice.supportsAudioConfig
+      ? {
+          audioEncoding: "MP3",
+          speakingRate:  interviewerId === "male" ? 1.02 : 0.90,
+          pitch:         0.0,
+        }
+      : { audioEncoding: "MP3" };
+
     const response = await fetch(
       `https://texttospeech.googleapis.com/v1/text:synthesize?key=${googleKey}`,
       {
@@ -51,11 +62,7 @@ export async function POST(request: Request) {
         body: JSON.stringify({
           input:       { text },
           voice:       { languageCode: "en-US", name: voice.name, ssmlGender: voice.ssmlGender },
-          audioConfig: {
-            audioEncoding: "MP3",
-            speakingRate: interviewerId === "female" ? 1.0 : 1.05,
-            pitch: 0.0,
-          },
+          audioConfig,
         }),
       },
     );
@@ -101,6 +108,8 @@ export async function POST(request: Request) {
   }
 
   // ── OpenAI TTS (tertiary fallback) ───────────────────────────────────────
+  // nova = warm conversational female (top-rated for naturalness)
+  // onyx = deep confident male
   if (openAiKey) {
     const voice = interviewerId === "male" ? "onyx" : "nova";
 
