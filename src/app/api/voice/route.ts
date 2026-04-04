@@ -5,12 +5,13 @@ type VoiceRequest = {
   interviewerId?: "female" | "male";
 };
 
-// Google Cloud Neural2 voices — 1M chars/month free forever
-// en-US-Neural2-F = warm, natural female (Elena)
-// en-US-Neural2-D = deep, confident male (Marcus)
+// Google Cloud Journey voices — conversational, natural American English
+// Journey voices are purpose-built for human-sounding dialogue (vs Neural2 which is more robotic)
+// en-US-Journey-F = natural, warm American female (Elena)
+// en-US-Journey-D = natural, confident American male (Marcus)
 const googleVoiceConfig = {
-  female: { name: "en-US-Neural2-F", ssmlGender: "FEMALE" },
-  male:   { name: "en-US-Neural2-D", ssmlGender: "MALE"   },
+  female: { name: "en-US-Journey-F", ssmlGender: "FEMALE" },
+  male:   { name: "en-US-Journey-D", ssmlGender: "MALE"   },
 } as const;
 
 // ElevenLabs voice IDs — 10,000 chars/month free
@@ -50,7 +51,11 @@ export async function POST(request: Request) {
         body: JSON.stringify({
           input:       { text },
           voice:       { languageCode: "en-US", name: voice.name, ssmlGender: voice.ssmlGender },
-          audioConfig: { audioEncoding: "MP3", speakingRate: 0.95, pitch: interviewerId === "female" ? 1.5 : -1.5 },
+          audioConfig: {
+            audioEncoding: "MP3",
+            speakingRate: interviewerId === "female" ? 1.0 : 1.05,
+            pitch: 0.0,
+          },
         }),
       },
     );
