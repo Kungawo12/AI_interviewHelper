@@ -63,9 +63,7 @@ function InterviewerFigure({
         src={photo}
         alt={name}
         fill
-        priority
-        className={`object-cover object-top transition-all duration-500 ${
-          isSpeaking ? "scale-[1.03] brightness-[1.05]" : "scale-100 brightness-100"
+
         }`}
       />
 
