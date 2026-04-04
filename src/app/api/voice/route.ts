@@ -7,10 +7,10 @@ type VoiceRequest = {
 
 // Google Cloud Journey voices — conversational, natural American English
 // Journey voices are purpose-built for human-sounding dialogue (vs Neural2 which is more robotic)
-// en-US-Journey-F = natural, warm American female (Elena)
+// en-US-Journey-O = warm, expressive American female — more natural than Journey-F
 // en-US-Journey-D = natural, confident American male (Marcus)
 const googleVoiceConfig = {
-  female: { name: "en-US-Journey-F", ssmlGender: "FEMALE" },
+  female: { name: "en-US-Journey-O", ssmlGender: "FEMALE" },
   male:   { name: "en-US-Journey-D", ssmlGender: "MALE"   },
 } as const;
 
@@ -53,8 +53,8 @@ export async function POST(request: Request) {
           voice:       { languageCode: "en-US", name: voice.name, ssmlGender: voice.ssmlGender },
           audioConfig: {
             audioEncoding: "MP3",
-            speakingRate: interviewerId === "female" ? 1.0 : 1.05,
-            pitch: 0.0,
+            speakingRate: interviewerId === "female" ? 1.05 : 1.05,
+            pitch: interviewerId === "female" ? 1.0 : 0.0,
           },
         }),
       },

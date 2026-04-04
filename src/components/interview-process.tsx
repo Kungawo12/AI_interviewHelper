@@ -47,79 +47,126 @@ function InterviewerFigure({
   const isListening = state === "listening";
   const name = interviewerId === "female" ? "Elena" : "Marcus";
 
+  const waveHeights = [10, 18, 28, 36, 28, 18, 10, 22, 32, 22, 14, 26, 16, 24, 12];
+
   return (
-    <div className="relative h-full min-h-[340px] overflow-hidden rounded-[2rem] bg-[#0d1827] shadow-[0_30px_80px_rgba(7,18,32,0.38)]">
+    <div className={`relative h-full min-h-[340px] overflow-hidden rounded-[2rem] bg-[#0d1827] transition-shadow duration-500 ${
+      isSpeaking
+        ? "shadow-[0_0_0_3px_rgba(255,140,97,0.55),0_30px_80px_rgba(255,100,50,0.22)]"
+        : isListening
+          ? "shadow-[0_0_0_3px_rgba(28,120,145,0.55),0_30px_80px_rgba(28,120,145,0.18)]"
+          : "shadow-[0_30px_80px_rgba(7,18,32,0.38)]"
+    }`}>
+
       {/* Photo fills the frame */}
       <Image
         src={photo}
         alt={name}
         fill
-        className={`object-cover object-top transition-all duration-300 ${
-          isSpeaking ? "scale-[1.02]" : "scale-100"
+        priority
+        className={`object-cover object-top transition-all duration-500 ${
+          isSpeaking ? "scale-[1.03] brightness-[1.05]" : "scale-100 brightness-100"
         }`}
       />
 
-      {/* Dark gradient at bottom for readability */}
-      <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
+      {/* Cinematic gradient overlay */}
+      <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent" />
+      <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-transparent to-transparent" />
 
-      {/* Speaking pulse ring */}
+      {/* Speaking glow wash */}
       {isSpeaking && (
-        <>
-          <div className="absolute inset-0 rounded-[2rem] border-2 border-[#ff8c61]/70 animate-pulse" />
-          <div className="absolute inset-[6px] rounded-[1.6rem] border border-[#ff8c61]/30 animate-pulse" style={{ animationDelay: "150ms" }} />
-        </>
-      )}
-
-      {/* Listening ring */}
-      {isListening && (
-        <div className="absolute inset-0 rounded-[2rem] border-2 border-[#1c7891]/70 animate-pulse" />
+        <div className="absolute inset-0 rounded-[2rem] bg-[#ff8c61]/6 animate-pulse" />
       )}
 
       {/* Live badge */}
-      <div className="absolute left-4 top-4 flex items-center gap-2 rounded-full bg-black/50 px-3 py-1.5 backdrop-blur-md">
-        <span className="h-2 w-2 animate-pulse rounded-full bg-[#5ce28a]" />
-        <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-white/90">Live</span>
+      <div className="absolute left-4 top-4 flex items-center gap-2 rounded-full bg-black/60 px-3 py-1.5 backdrop-blur-md border border-white/10">
+        <span className={`h-2 w-2 rounded-full ${isSpeaking || isListening ? "bg-[#5ce28a] animate-pulse" : "bg-[#5ce28a]/60"}`} />
+        <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-white/90">Live</span>
       </div>
 
       {/* Status badge */}
-      <div className={`absolute right-4 top-4 rounded-full px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.18em] backdrop-blur-md transition-colors ${
+      <div className={`absolute right-4 top-4 rounded-full px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.18em] backdrop-blur-md border transition-all duration-300 ${
         isSpeaking
-          ? "bg-[#ff8c61]/30 text-[#ffb08a]"
+          ? "bg-[#ff8c61]/25 text-[#ffb08a] border-[#ff8c61]/30"
           : isListening
-            ? "bg-[#1c7891]/30 text-[#5ecbe8]"
-            : "bg-white/12 text-white/80"
+            ? "bg-[#1c7891]/25 text-[#5ecbe8] border-[#1c7891]/30"
+            : "bg-white/10 text-white/70 border-white/10"
       }`}>
         {isSpeaking ? "Speaking" : isListening ? "Listening" : "Ready"}
       </div>
 
-      {/* Sound wave bars when speaking */}
+      {/* Voice wave — shown while speaking */}
       {isSpeaking && (
-        <div className="absolute bottom-[72px] left-1/2 flex -translate-x-1/2 items-end gap-[3px]">
-          {[12, 20, 28, 20, 14, 24, 16].map((h, i) => (
+        <div className="absolute bottom-[76px] left-1/2 flex -translate-x-1/2 items-end gap-[2.5px]">
+          {waveHeights.map((h, i) => (
             <div
               key={i}
-              className="w-[3px] rounded-full bg-[#ff8c61]/80 animate-bounce"
-              style={{ height: `${h}px`, animationDelay: `${i * 80}ms`, animationDuration: "600ms" }}
+              className="w-[2.5px] rounded-full bg-[#ff8c61]"
+              style={{
+                height: `${h}px`,
+                opacity: 0.7 + (i % 3) * 0.1,
+                animation: `bounce ${0.5 + (i % 4) * 0.08}s ease-in-out infinite alternate`,
+                animationDelay: `${i * 55}ms`,
+              }}
             />
           ))}
         </div>
       )}
 
-      {/* Bottom info */}
-      <div className="absolute bottom-4 left-4 right-4 flex items-center justify-between rounded-[1.2rem] border border-white/10 bg-black/50 px-4 py-3 backdrop-blur-md">
+      {/* Microphone icon — shown while listening */}
+      {isListening && (
+        <div className="absolute bottom-[76px] left-1/2 -translate-x-1/2 flex items-center gap-2">
+          <div className="flex items-end gap-[2.5px]">
+            {[8, 14, 10, 16, 10, 14, 8].map((h, i) => (
+              <div
+                key={i}
+                className="w-[2.5px] rounded-full bg-[#1c7891]"
+                style={{
+                  height: `${h}px`,
+                  opacity: 0.65,
+                  animation: `bounce ${0.55 + i * 0.06}s ease-in-out infinite alternate`,
+                  animationDelay: `${i * 70}ms`,
+                }}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Bottom name card */}
+      <div className="absolute bottom-4 left-4 right-4 flex items-center justify-between rounded-[1.2rem] border border-white/10 bg-black/60 px-4 py-3 backdrop-blur-md">
         <div>
           <p className="text-sm font-semibold text-white">{name}</p>
-          <p className="mt-0.5 text-xs text-white/60">
-            {isSpeaking ? "Asking the question..." : isListening ? "Listening closely" : "Waiting for your response"}
+          <p className="mt-0.5 text-[11px] text-white/55">
+            {isSpeaking ? "Asking the question…" : isListening ? "Listening closely…" : "Waiting for your response"}
           </p>
         </div>
-        <div className={`h-9 w-9 rounded-full border border-white/16 transition-colors ${
+        {/* Animated mic / speaker dot */}
+        <div className={`flex h-9 w-9 items-center justify-center rounded-full border border-white/14 transition-all duration-300 ${
           isSpeaking
-            ? "bg-[radial-gradient(circle,rgba(255,140,97,0.9),rgba(255,140,97,0.16))] animate-pulse"
+            ? "bg-[#ff8c61]/20"
             : isListening
-              ? "bg-[radial-gradient(circle,rgba(28,120,145,0.9),rgba(28,120,145,0.16))] animate-pulse"
-              : "bg-[radial-gradient(circle,rgba(255,255,255,0.3),rgba(255,255,255,0.06))]"
-        }`} />
+              ? "bg-[#1c7891]/20"
+              : "bg-white/8"
+        }`}>
+          {isSpeaking ? (
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="text-[#ff8c61]">
+              <path d="M11 5L6 9H2v6h4l5 4V5z" fill="currentColor"/>
+              <path d="M15.54 8.46a5 5 0 0 1 0 7.07" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+              <path d="M19.07 4.93a10 10 0 0 1 0 14.14" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+            </svg>
+          ) : isListening ? (
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="text-[#5ecbe8] animate-pulse">
+              <rect x="9" y="2" width="6" height="12" rx="3" fill="currentColor"/>
+              <path d="M5 10a7 7 0 0 0 14 0" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+              <line x1="12" y1="19" x2="12" y2="22" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+            </svg>
+          ) : (
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" className="text-white/40">
+              <circle cx="12" cy="12" r="4" fill="currentColor"/>
+            </svg>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -129,12 +176,12 @@ const interviewerOptions: InterviewerOption[] = [
   {
     id: "female",
     name: "Elena",
-    photo: "https://randomuser.me/api/portraits/women/44.jpg",
+    photo: "https://randomuser.me/api/portraits/women/68.jpg",
   },
   {
     id: "male",
     name: "Marcus",
-    photo: "https://randomuser.me/api/portraits/men/32.jpg",
+    photo: "https://randomuser.me/api/portraits/men/75.jpg",
   },
 ];
 
