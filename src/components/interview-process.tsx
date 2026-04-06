@@ -36,263 +36,82 @@ type PresenceMetrics = {
 
 function InterviewerFigure({
   interviewerId,
+  photo,
   state,
 }: {
   interviewerId: "female" | "male";
-  photo?: string;
+  photo: string;
   state: VoiceState;
 }) {
   const isSpeaking = state === "speaking";
   const isListening = state === "listening";
   const name = interviewerId === "female" ? "Elena" : "Marcus";
-  const isFemale = interviewerId === "female";
-
-  const [blinking, setBlinking] = useState(false);
-  const [mouthPhase, setMouthPhase] = useState(0);
-  const [headTilt, setHeadTilt] = useState(0);
-
-  // Random blink every 2–5 s
-  useEffect(() => {
-    let t: number;
-    const scheduleBlink = () => {
-      t = window.setTimeout(() => {
-        setBlinking(true);
-        window.setTimeout(() => { setBlinking(false); scheduleBlink(); }, 130);
-      }, 2200 + Math.random() * 2800);
-    };
-    scheduleBlink();
-    return () => window.clearTimeout(t);
-  }, []);
-
-  // Mouth animation while speaking
-  useEffect(() => {
-    if (!isSpeaking) { setMouthPhase(0); return; }
-    let ph = 0;
-    const id = window.setInterval(() => { ph = (ph + 1) % 4; setMouthPhase(ph); }, 145);
-    return () => window.clearInterval(id);
-  }, [isSpeaking]);
-
-  // Gentle nod while listening
-  useEffect(() => {
-    if (!isListening) { setHeadTilt(0); return; }
-    let dir = 1;
-    const id = window.setInterval(() => { setHeadTilt(dir * 3); dir *= -1; }, 1500);
-    return () => window.clearInterval(id);
-  }, [isListening]);
-
-  const C = isFemale ? {
-    skin: "#F2C09A", skinShadow: "#D9A07A",
-    hair: "#2B1810", hairHL: "#5C3020",
-    eye: "#4A2E1A",
-    blazer: "#1B3D6E", blazerHL: "#2756A0",
-    shirt: "#E8EDF5",
-    lips: "#D4776A", lipsInner: "#9B3E36",
-    blush: "rgba(240,110,100,0.13)",
-  } : {
-    skin: "#C88B62", skinShadow: "#A86A42",
-    hair: "#111111", hairHL: "#2A2A2A",
-    eye: "#1A2535",
-    blazer: "#0F2744", blazerHL: "#1B3D6E",
-    shirt: "#D0D8E8",
-    lips: "#9A5848", lipsInner: "#6A3530",
-    blush: "rgba(180,90,70,0.08)",
-  };
-
-  const browLift = isListening ? -4 : isSpeaking ? -2 : 0;
-
-  // Eyelid covers eye when blinking (scaleY from top)
-  const lidScale = blinking ? 1 : 0.05;
-
-  // Mouth shape
-  const Mouth = () => {
-    if (isSpeaking) {
-      if (mouthPhase >= 2)
-        return (
-          <>
-            <path d="M 115 217 Q 140 242 165 217 Q 140 256 115 217" fill={C.lipsInner} />
-            <ellipse cx="140" cy="232" rx="18" ry="9" fill="#F5F0EB" opacity="0.9" />
-            <path d="M 115 217 Q 140 242 165 217" fill="none" stroke={C.lips} strokeWidth="2.5" strokeLinecap="round" />
-          </>
-        );
-      return (
-        <>
-          <path d="M 117 217 Q 140 234 163 217 Q 140 244 117 217" fill={C.lipsInner} />
-          <path d="M 117 217 Q 140 234 163 217" fill="none" stroke={C.lips} strokeWidth="2.5" strokeLinecap="round" />
-        </>
-      );
-    }
-    if (isListening)
-      return <path d="M 118 217 Q 140 230 162 217" fill="none" stroke={C.lips} strokeWidth="3" strokeLinecap="round" />;
-    return (
-      <>
-        <path d="M 120 217 Q 140 228 160 217" fill="none" stroke={C.lips} strokeWidth="3" strokeLinecap="round" />
-        <path d="M 126 214 Q 133 209 140 212 Q 147 209 154 214" fill="none" stroke={C.lips} strokeWidth="1.5" strokeLinecap="round" opacity="0.55" />
-      </>
-    );
-  };
-
-  const waveHeights = [8, 16, 26, 34, 26, 16, 8, 20, 30, 20, 12, 22, 14];
+  const waveHeights = [8, 14, 22, 30, 22, 14, 8, 18, 26, 18, 10, 20, 13];
 
   return (
-    <div className={`relative h-full min-h-[340px] overflow-hidden rounded-[2rem] bg-gradient-to-b from-[#0f2035] via-[#0d1a2e] to-[#08111e] transition-shadow duration-500 ${
+    <div className={`relative h-full min-h-[340px] overflow-hidden rounded-[2rem] bg-[#0d1827] transition-shadow duration-500 ${
       isSpeaking
-        ? "shadow-[0_0_0_3px_rgba(255,140,97,0.6),0_30px_80px_rgba(255,100,50,0.2)]"
+        ? "shadow-[0_0_0_3px_rgba(255,140,97,0.65),0_30px_80px_rgba(255,100,50,0.25)]"
         : isListening
-          ? "shadow-[0_0_0_3px_rgba(28,120,145,0.6),0_30px_80px_rgba(28,120,145,0.18)]"
+          ? "shadow-[0_0_0_3px_rgba(28,120,145,0.65),0_30px_80px_rgba(28,120,145,0.2)]"
           : "shadow-[0_30px_80px_rgba(7,18,32,0.4)]"
     }`}>
 
-      {/* Ambient glow behind character */}
-      {isSpeaking  && <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_50%_38%,rgba(255,140,97,0.09),transparent_70%)] animate-pulse" />}
-      {isListening && <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_50%_38%,rgba(28,120,145,0.09),transparent_70%)] animate-pulse" />}
+      {/* Real person photo */}
+      <Image
+        src={photo}
+        alt={name}
+        fill
+        priority
+        className={`object-cover object-top transition-all duration-500 ${
+          isSpeaking ? "scale-[1.03] brightness-[1.06]" : "scale-100 brightness-100"
+        }`}
+      />
 
-      {/* ── Animated SVG character ────────────────────────────────── */}
-      <div
-        className="absolute inset-0 flex items-center justify-center"
-        style={{
-          transform: `rotate(${headTilt}deg)`,
-          transition: "transform 0.9s ease-in-out",
-          transformOrigin: "center 60%",
-        }}
-      >
-        <svg viewBox="0 0 280 370" className="h-full w-full" preserveAspectRatio="xMidYMid meet">
-          <defs>
-            <radialGradient id={`sg-${interviewerId}`} cx="38%" cy="32%" r="62%">
-              <stop offset="0%" stopColor={C.skin} />
-              <stop offset="100%" stopColor={C.skinShadow} />
-            </radialGradient>
-            <radialGradient id={`eg-${interviewerId}`} cx="35%" cy="30%" r="65%">
-              <stop offset="0%" stopColor="#7A6A5A" />
-              <stop offset="100%" stopColor={C.eye} />
-            </radialGradient>
-          </defs>
+      {/* Bottom gradient for text legibility */}
+      <div className="absolute inset-x-0 bottom-0 h-2/3 bg-gradient-to-t from-black/85 via-black/30 to-transparent" />
+      {/* Top vignette */}
+      <div className="absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-black/40 to-transparent" />
 
-          {/* Shirt visible above blazer */}
-          <path d="M 95 282 L 140 310 L 185 282 L 198 370 L 82 370 Z" fill={C.shirt} />
-
-          {/* Blazer body */}
-          <path d="M 0 370 L 0 298 Q 55 255 108 270 L 140 310 L 172 270 Q 225 255 280 298 L 280 370 Z" fill={C.blazer} />
-          {/* Lapels */}
-          <path d="M 108 270 L 140 310 L 122 370 L 78 370 L 88 292 Z" fill={C.blazerHL} opacity="0.45" />
-          <path d="M 172 270 L 140 310 L 158 370 L 202 370 L 192 292 Z" fill={C.blazerHL} opacity="0.45" />
-
-          {/* Neck */}
-          <rect x="118" y="258" width="44" height="38" rx="10" fill={`url(#sg-${interviewerId})`} />
-
-          {/* ── Hair (behind face) ──── */}
-          {isFemale ? (
-            <>
-              {/* Bun */}
-              <ellipse cx="165" cy="86" rx="25" ry="21" fill={C.hair} />
-              <ellipse cx="165" cy="86" rx="16" ry="13" fill={C.hairHL} opacity="0.35" />
-              {/* Main hair */}
-              <path d="M 62 158 Q 58 96 84 72 Q 110 50 140 48 Q 170 50 196 72 Q 222 96 218 158" fill={C.hair} />
-              {/* Side strands */}
-              <path d="M 64 162 Q 55 190 60 215" fill="none" stroke={C.hair} strokeWidth="9" strokeLinecap="round" />
-              <path d="M 216 162 Q 225 190 220 215" fill="none" stroke={C.hair} strokeWidth="9" strokeLinecap="round" />
-            </>
-          ) : (
-            <>
-              <path d="M 62 158 Q 60 92 92 66 Q 116 46 140 44 Q 164 46 188 66 Q 220 92 218 158" fill={C.hair} />
-              <path d="M 62 158 Q 60 180 65 200" fill="none" stroke={C.hair} strokeWidth="11" strokeLinecap="round" opacity="0.55" />
-              <path d="M 218 158 Q 220 180 215 200" fill="none" stroke={C.hair} strokeWidth="11" strokeLinecap="round" opacity="0.55" />
-            </>
-          )}
-
-          {/* Ears */}
-          <ellipse cx="61" cy="176" rx="13" ry="17" fill={`url(#sg-${interviewerId})`} />
-          <ellipse cx="219" cy="176" rx="13" ry="17" fill={`url(#sg-${interviewerId})`} />
-
-          {/* Face */}
-          <ellipse cx="140" cy="172" rx="80" ry="92" fill={`url(#sg-${interviewerId})`} />
-
-          {/* Chin shadow */}
-          <ellipse cx="140" cy="252" rx="48" ry="12" fill={C.skinShadow} opacity="0.2" />
-
-          {/* Cheek blush */}
-          <ellipse cx="96" cy="196" rx="28" ry="17" fill={C.blush} />
-          <ellipse cx="184" cy="196" rx="28" ry="17" fill={C.blush} />
-
-          {/* ── Eyebrows ─────────────────────────────────────────── */}
-          <g style={{ transform: `translateY(${browLift}px)`, transition: "transform 0.4s ease" }}>
-            {isFemale ? (
-              <>
-                <path d="M 85 138 Q 106 130 128 136" fill="none" stroke={C.hair} strokeWidth="3.5" strokeLinecap="round" />
-                <path d="M 152 136 Q 174 130 195 138" fill="none" stroke={C.hair} strokeWidth="3.5" strokeLinecap="round" />
-              </>
-            ) : (
-              <>
-                <path d="M 83 138 Q 105 132 128 137" fill="none" stroke={C.hair} strokeWidth="5" strokeLinecap="round" />
-                <path d="M 152 137 Q 175 132 197 138" fill="none" stroke={C.hair} strokeWidth="5" strokeLinecap="round" />
-              </>
-            )}
-          </g>
-
-          {/* ── Eyes ─────────────────────────────────────────────── */}
-          {/* Whites */}
-          <ellipse cx="108" cy="158" rx="21" ry="12" fill="white" />
-          <ellipse cx="172" cy="158" rx="21" ry="12" fill="white" />
-          {/* Iris + pupil + highlight */}
-          <circle cx="110" cy="158" r="9.5" fill={`url(#eg-${interviewerId})`} />
-          <circle cx="110" cy="158" r="5.5" fill={C.eye} />
-          <circle cx="114" cy="154" r="2.8" fill="white" opacity="0.92" />
-          <circle cx="174" cy="158" r="9.5" fill={`url(#eg-${interviewerId})`} />
-          <circle cx="174" cy="158" r="5.5" fill={C.eye} />
-          <circle cx="178" cy="154" r="2.8" fill="white" opacity="0.92" />
-          {/* Eyelashes line */}
-          <path d="M 88 150 Q 108 144 128 150" fill="none" stroke={C.hair} strokeWidth={isFemale ? "2.5" : "2"} strokeLinecap="round" />
-          <path d="M 152 150 Q 172 144 192 150" fill="none" stroke={C.hair} strokeWidth={isFemale ? "2.5" : "2"} strokeLinecap="round" />
-          {/* Eyelid (blink) — scaleY from top */}
-          <rect x="87" y="146" width="42" height="24" rx="4" fill={C.skin}
-            style={{ transformOrigin: "108px 146px", transform: `scaleY(${lidScale})`, transition: "transform 0.07s ease-in-out" }} />
-          <rect x="151" y="146" width="42" height="24" rx="4" fill={C.skin}
-            style={{ transformOrigin: "172px 146px", transform: `scaleY(${lidScale})`, transition: "transform 0.07s ease-in-out" }} />
-
-          {/* ── Nose ─────────────────────────────────────────────── */}
-          <path d="M 135 185 Q 130 200 137 206 Q 140 208 143 206 Q 150 200 145 185" fill="none" stroke={C.skinShadow} strokeWidth="2" strokeLinecap="round" opacity="0.5" />
-          <ellipse cx="134" cy="206" rx="5" ry="3.5" fill={C.skinShadow} opacity="0.2" />
-          <ellipse cx="146" cy="206" rx="5" ry="3.5" fill={C.skinShadow} opacity="0.2" />
-
-          {/* ── Mouth ────────────────────────────────────────────── */}
-          <Mouth />
-        </svg>
-      </div>
+      {/* Speaking colour wash */}
+      {isSpeaking  && <div className="absolute inset-0 bg-[rgba(255,140,97,0.07)] animate-pulse rounded-[2rem]" />}
+      {isListening && <div className="absolute inset-0 bg-[rgba(28,120,145,0.07)] animate-pulse rounded-[2rem]" />}
 
       {/* Live badge */}
-      <div className="absolute left-4 top-4 flex items-center gap-2 rounded-full bg-black/60 px-3 py-1.5 backdrop-blur-md border border-white/10">
+      <div className="absolute left-4 top-4 flex items-center gap-2 rounded-full bg-black/55 px-3 py-1.5 backdrop-blur-md border border-white/10">
         <span className={`h-2 w-2 rounded-full ${isSpeaking || isListening ? "bg-[#5ce28a] animate-pulse" : "bg-[#5ce28a]/60"}`} />
         <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-white/90">Live</span>
       </div>
 
       {/* Status badge */}
       <div className={`absolute right-4 top-4 rounded-full px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.18em] backdrop-blur-md border transition-all duration-300 ${
-        isSpeaking ? "bg-[#ff8c61]/25 text-[#ffb08a] border-[#ff8c61]/30" :
+        isSpeaking  ? "bg-[#ff8c61]/25 text-[#ffb08a] border-[#ff8c61]/30" :
         isListening ? "bg-[#1c7891]/25 text-[#5ecbe8] border-[#1c7891]/30" :
         "bg-white/10 text-white/70 border-white/10"
       }`}>
         {isSpeaking ? "Speaking" : isListening ? "Listening" : "Ready"}
       </div>
 
-      {/* Voice wave bars */}
+      {/* Voice wave bars while speaking */}
       {isSpeaking && (
-        <div className="absolute bottom-[76px] left-1/2 flex -translate-x-1/2 items-end gap-[2.5px]">
+        <div className="absolute bottom-[76px] left-1/2 flex -translate-x-1/2 items-end gap-[3px]">
           {waveHeights.map((h, i) => (
-            <div key={i} className="w-[2.5px] rounded-full bg-[#ff8c61]"
-              style={{ height: `${h}px`, opacity: 0.65 + (i % 3) * 0.12,
-                animation: `bounce ${0.48 + (i % 4) * 0.09}s ease-in-out infinite alternate`,
-                animationDelay: `${i * 52}ms` }} />
+            <div key={i} className="w-[3px] rounded-full bg-[#ff8c61]"
+              style={{ height: `${h}px`, opacity: 0.6 + (i % 3) * 0.13,
+                animation: `bounce ${0.46 + (i % 4) * 0.1}s ease-in-out infinite alternate`,
+                animationDelay: `${i * 55}ms` }} />
           ))}
         </div>
       )}
 
       {/* Mic wave bars while listening */}
       {isListening && (
-        <div className="absolute bottom-[76px] left-1/2 -translate-x-1/2 flex items-end gap-[2.5px]">
-          {[7, 13, 9, 15, 9, 13, 7].map((h, i) => (
-            <div key={i} className="w-[2.5px] rounded-full bg-[#1c7891]"
-              style={{ height: `${h}px`, opacity: 0.6,
-                animation: `bounce ${0.55 + i * 0.07}s ease-in-out infinite alternate`,
-                animationDelay: `${i * 68}ms` }} />
+        <div className="absolute bottom-[76px] left-1/2 -translate-x-1/2 flex items-end gap-[3px]">
+          {[6, 12, 8, 14, 8, 12, 6].map((h, i) => (
+            <div key={i} className="w-[3px] rounded-full bg-[#1c7891]"
+              style={{ height: `${h}px`, opacity: 0.55,
+                animation: `bounce ${0.52 + i * 0.08}s ease-in-out infinite alternate`,
+                animationDelay: `${i * 72}ms` }} />
           ))}
         </div>
       )}
@@ -334,12 +153,12 @@ const interviewerOptions: InterviewerOption[] = [
   {
     id: "female",
     name: "Elena",
-    photo: "https://randomuser.me/api/portraits/women/68.jpg",
+    photo: "https://randomuser.me/api/portraits/women/44.jpg",
   },
   {
     id: "male",
     name: "Marcus",
-    photo: "https://randomuser.me/api/portraits/men/75.jpg",
+    photo: "https://randomuser.me/api/portraits/men/32.jpg",
   },
 ];
 

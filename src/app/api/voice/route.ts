@@ -41,7 +41,26 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Text is required." }, { status: 400 });
   }
 
-  // ── Google Cloud TTS (primary — 1M chars/month free forever) ─────────────
+  // ── OpenAI TTS (primary when key present — most natural voices) ──────────
+  // nova = warm, conversational female  |  onyx = deep, confident male
+  // tts-1-hd = highest quality model
+  if (openAiKey) {
+    const voice = interviewerId === "male" ? "onyx" : "nova";
+    const response = await fetch("https://api.openai.com/v1/audio/speech", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${openAiKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ model: "tts-1-hd", voice, input: text, response_format: "mp3" }),
+    });
+    if (response.ok) {
+      const audioBuffer = await response.arrayBuffer();
+      return new NextResponse(audioBuffer, {
+        status: 200,
+        headers: { "Content-Type": "audio/mpeg", "Cache-Control": "no-store, max-age=0" },
+      });
+    }
+  }
+
+  // ── Google Cloud TTS (fallback — 1M chars/month free) ────────────────────
   if (googleKey) {
     const voice = googleVoiceConfig[interviewerId];
 
@@ -102,27 +121,6 @@ export async function POST(request: Request) {
         }),
       },
     );
-
-    if (response.ok) {
-      const audioBuffer = await response.arrayBuffer();
-      return new NextResponse(audioBuffer, {
-        status: 200,
-        headers: { "Content-Type": "audio/mpeg", "Cache-Control": "no-store, max-age=0" },
-      });
-    }
-  }
-
-  // ── OpenAI TTS (tertiary fallback) ───────────────────────────────────────
-  // nova = warm conversational female (top-rated for naturalness)
-  // onyx = deep confident male
-  if (openAiKey) {
-    const voice = interviewerId === "male" ? "onyx" : "nova";
-
-    const response = await fetch("https://api.openai.com/v1/audio/speech", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${openAiKey}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ model: "tts-1-hd", voice, input: text, response_format: "mp3" }),
-    });
 
     if (response.ok) {
       const audioBuffer = await response.arrayBuffer();
