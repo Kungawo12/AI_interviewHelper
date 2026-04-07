@@ -216,6 +216,40 @@ export function InterviewSetupForm({ error }: InterviewSetupFormProps) {
         </div>
       </div>
 
+      <div className="space-y-4">
+        <p className="text-sm font-semibold uppercase tracking-[0.16em] text-highlight">
+          Interview difficulty
+        </p>
+        <div className="grid gap-3 md:grid-cols-3">
+          {(["easy", "medium", "hard"] as const).map((level) => {
+            const meta = {
+              easy:   { label: "Easy",   badge: "Beginner", note: "4–5 questions · Surface-level intro and motivation" },
+              medium: { label: "Medium", badge: "Standard", note: "6–8 questions · Behavioral + role-specific mix" },
+              hard:   { label: "Hard",   badge: "Full loop", note: "8–12 questions · Technical + hard behavioral" },
+            }[level];
+            return (
+              <label
+                key={level}
+                className="flex h-full cursor-pointer gap-3 rounded-[1.45rem] border border-line bg-white/80 px-4 py-4 transition hover:border-accent/55 hover:bg-[#fff4ef]"
+              >
+                <input
+                  type="radio"
+                  name="difficulty"
+                  value={level}
+                  defaultChecked={level === "medium"}
+                  className="mt-1 h-4 w-4 border-line text-accent focus:ring-accent"
+                />
+                <span className="space-y-1">
+                  <span className="block text-sm font-semibold text-foreground">{meta.label}</span>
+                  <span className="block text-[11px] font-semibold uppercase tracking-[0.14em] text-accent">{meta.badge}</span>
+                  <span className="block text-sm leading-6 text-muted">{meta.note}</span>
+                </span>
+              </label>
+            );
+          })}
+        </div>
+      </div>
+
       <div className="grid gap-5 md:grid-cols-2">
         <label className="space-y-2">
           <span className="text-sm font-semibold text-foreground">

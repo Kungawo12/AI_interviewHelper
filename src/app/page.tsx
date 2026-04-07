@@ -70,6 +70,71 @@ export default async function Home({
             </div>
 
             <InterviewScene />
+
+            <div className="space-y-3 pt-2">
+              <p className="text-sm font-semibold uppercase tracking-[0.2em] text-accent">
+                Choose your intensity
+              </p>
+              <div className="grid gap-3 sm:grid-cols-3">
+                {[
+                  {
+                    label: "Easy",
+                    badge: "Beginner-friendly",
+                    color: "emerald",
+                    desc: "Intro, motivation and basic questions. Low pressure, great for first-timers.",
+                    detail: "4 – 5 questions",
+                  },
+                  {
+                    label: "Medium",
+                    badge: "Standard round",
+                    color: "blue",
+                    desc: "Behavioral and situational mix with one role-specific question. Mirrors a real first round.",
+                    detail: "6 – 8 questions",
+                  },
+                  {
+                    label: "Hard",
+                    badge: "Full loop",
+                    color: "orange",
+                    desc: "Technical depth, hard behavioral, and pressure scenarios scaled to company reputation.",
+                    detail: "8 – 12 questions",
+                  },
+                ].map((level) => (
+                  <div
+                    key={level.label}
+                    className={`rounded-[1.35rem] border px-4 py-4 ${
+                      level.color === "emerald"
+                        ? "border-emerald-200/60 bg-emerald-50/60"
+                        : level.color === "blue"
+                          ? "border-blue-200/60 bg-blue-50/60"
+                          : "border-[#ff8c61]/25 bg-[#fff4ef]/70"
+                    }`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className={`text-sm font-bold ${
+                        level.color === "emerald" ? "text-emerald-700" : level.color === "blue" ? "text-blue-700" : "text-[#c0521e]"
+                      }`}>
+                        {level.label}
+                      </span>
+                      <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] ${
+                        level.color === "emerald"
+                          ? "bg-emerald-100 text-emerald-700"
+                          : level.color === "blue"
+                            ? "bg-blue-100 text-blue-700"
+                            : "bg-[#ff8c61]/15 text-[#c0521e]"
+                      }`}>
+                        {level.badge}
+                      </span>
+                    </div>
+                    <p className="mt-2 text-sm leading-6 text-muted">{level.desc}</p>
+                    <p className={`mt-2 text-xs font-semibold ${
+                      level.color === "emerald" ? "text-emerald-600" : level.color === "blue" ? "text-blue-600" : "text-[#c0521e]"
+                    }`}>
+                      {level.detail}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
 

@@ -4,7 +4,7 @@ import { FieldType, ResumeFormat, SessionStatus } from "@prisma/client";
 import { redirect } from "next/navigation";
 
 import { db } from "@/lib/db";
-import { generateInterviewQuestions } from "@/lib/interview-questions";
+import { generateInterviewQuestions, getInterviewQuestionCount } from "@/lib/interview-questions";
 import { parseResumeUpload } from "@/lib/resume";
 
 const fieldTypeMap: Record<string, FieldType> = {
@@ -34,6 +34,10 @@ export async function createInterviewSession(formData: FormData) {
   const pastedResumeText = readValue(formData, "resumeText");
   const resumeFile = formData.get("resumeFile");
   const useSavedProfile = formData.get("useSavedProfile") === "on";
+
+  const difficultyValue = readValue(formData, "difficulty");
+  const difficulty: "easy" | "medium" | "hard" =
+    difficultyValue === "easy" ? "easy" : difficultyValue === "hard" ? "hard" : "medium";
 
   let uploadedResume =
     resumeFile instanceof File ? await parseResumeUpload(resumeFile) : null;
@@ -171,6 +175,7 @@ export async function createInterviewSession(formData: FormData) {
         jobTitle,
         companyName: companyName || null,
         jobDescription,
+        experienceLevel: difficulty,
       },
     });
 
@@ -193,7 +198,7 @@ export async function createInterviewSession(formData: FormData) {
         interviewProfileId: interviewProfile.id,
         resumeId: resume.id,
         status: SessionStatus.CREATED,
-        totalQuestions: 10,
+        totalQuestions: getInterviewQuestionCount(difficulty, companyName),
         currentQuestion: 1,
         startedAt: new Date(),
       },
@@ -205,6 +210,7 @@ export async function createInterviewSession(formData: FormData) {
       companyName,
       jobDescription,
       resumeText: resumeContent,
+      difficulty,
     });
 
     await db.question.createMany({

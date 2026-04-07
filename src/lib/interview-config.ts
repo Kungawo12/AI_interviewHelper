@@ -84,3 +84,38 @@ export const companySuggestions = [
   "Hilton",
   "Target",
 ] as const;
+
+export const interviewLevels = [
+  {
+    id: "easy",
+    label: "Easy",
+    badge: "Beginner-friendly",
+    description:
+      "A warm, low-pressure round. The interviewer covers your background, motivation, and a few basic questions to see if you are a good fit. Great for first-timers or quick prep.",
+    what: ["Personal introduction", "Why this role and company", "One simple situational question", "Basic strengths and goals"],
+    questions: "4 – 5 questions",
+    color: "emerald",
+  },
+  {
+    id: "medium",
+    label: "Medium",
+    badge: "Standard round",
+    description:
+      "A realistic interview mix. Behavioral, situational, and role-specific questions are combined at varying difficulty. Mirrors a typical first or second-round interview.",
+    what: ["Tell me about yourself", "Challenge and teamwork stories", "Role-fit and company alignment", "One light technical or domain question"],
+    questions: "6 – 8 questions",
+    color: "blue",
+  },
+  {
+    id: "hard",
+    label: "Hard",
+    badge: "Full loop simulation",
+    description:
+      "A demanding, full-loop simulation. Technical depth, complex behavioral questions, and pressure scenarios modelled on how top companies actually interview. Question count scales with company reputation.",
+    what: ["Deep technical or system-level questions", "Hard behavioral — failures, conflict, pressure", "Why you over other candidates", "First-90-days impact plan"],
+    questions: "8 – 12 questions (scales with company)",
+    color: "orange",
+  },
+] as const;
+
+export type InterviewLevelId = "easy" | "medium" | "hard";
