@@ -11,8 +11,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Text is required" }, { status: 400 });
     }
 
-    const selectedVoice: VoiceOption =
-      VALID_VOICES.includes(voice) ? (voice as VoiceOption) : "nova";
+    if (voice !== undefined && !VALID_VOICES.includes(voice)) {
+      return NextResponse.json(
+        { error: `Invalid voice. Must be one of: ${VALID_VOICES.join(", ")}` },
+        { status: 400 },
+      );
+    }
+
+    const selectedVoice: VoiceOption = VALID_VOICES.includes(voice)
+      ? (voice as VoiceOption)
+      : "nova";
 
     const audioBuffer = await generateSpeech(text, selectedVoice);
 

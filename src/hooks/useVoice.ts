@@ -1,6 +1,7 @@
+import { VoiceOption } from "@/lib/voice";
 import { useRef, useState } from "react";
 
-export type VoiceOption = "alloy" | "echo" | "fable" | "onyx" | "nova" | "shimmer";
+export type { VoiceOption };
 
 export function useVoice() {
   const [isLoading, setIsLoading] = useState(false);
@@ -30,7 +31,7 @@ export function useVoice() {
       });
 
       if (!response.ok) {
-        throw new Error("Failed to generate speech");
+        throw new Error(`Failed to generate speech (HTTP ${response.status})`);
       }
 
       const audioBlob = await response.blob();
