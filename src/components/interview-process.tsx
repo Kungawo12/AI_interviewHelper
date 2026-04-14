@@ -22,9 +22,12 @@ type PermissionState = "idle" | "granted" | "denied";
 type VoiceState = "idle" | "speaking" | "listening";
 type VoiceEngine = "ai" | "browser" | "unavailable" | "none";
 type InterviewerOption = {
-  id: "female" | "male";
+  id: string;
   name: string;
   photo: string;
+  gender: "female" | "male";
+  voiceId: string;
+  description: string;
 };
 
 type PresenceMetrics = {
@@ -35,17 +38,16 @@ type PresenceMetrics = {
 };
 
 function InterviewerFigure({
-  interviewerId,
+  name,
   photo,
   state,
 }: {
-  interviewerId: "female" | "male";
+  name: string;
   photo: string;
   state: VoiceState;
 }) {
   const isSpeaking = state === "speaking";
   const isListening = state === "listening";
-  const name = interviewerId === "female" ? "Elena" : "Marcus";
   const waveHeights = [8, 14, 22, 30, 22, 14, 8, 18, 26, 18, 10, 20, 13];
 
   return (
@@ -150,15 +152,71 @@ function InterviewerFigure({
 }
 
 const interviewerOptions: InterviewerOption[] = [
+  // ── Female voices ──────────────────────────────────────────────────────────
   {
-    id: "female",
-    name: "Elena",
-    photo: "https://randomuser.me/api/portraits/women/44.jpg",
+    id: "sarah",
+    name: "Sarah",
+    gender: "female",
+    voiceId: "nova",
+    photo: "https://randomuser.me/api/portraits/women/26.jpg",
+    description: "Warm, friendly and encouraging.",
   },
   {
-    id: "male",
+    id: "emma",
+    name: "Emma",
+    gender: "female",
+    voiceId: "shimmer",
+    photo: "https://randomuser.me/api/portraits/women/52.jpg",
+    description: "Soft, clear and empathetic.",
+  },
+  {
+    id: "olivia",
+    name: "Olivia",
+    gender: "female",
+    voiceId: "coral",
+    photo: "https://randomuser.me/api/portraits/women/33.jpg",
+    description: "Expressive, polished and direct.",
+  },
+  {
+    id: "sophia",
+    name: "Sophia",
+    gender: "female",
+    voiceId: "sage",
+    photo: "https://randomuser.me/api/portraits/women/65.jpg",
+    description: "Calm, measured and authoritative.",
+  },
+  // ── Male voices ────────────────────────────────────────────────────────────
+  {
+    id: "marcus",
     name: "Marcus",
+    gender: "male",
+    voiceId: "onyx",
     photo: "https://randomuser.me/api/portraits/men/32.jpg",
+    description: "Deep, confident and composed.",
+  },
+  {
+    id: "james",
+    name: "James",
+    gender: "male",
+    voiceId: "echo",
+    photo: "https://randomuser.me/api/portraits/men/45.jpg",
+    description: "Clear, professional and focused.",
+  },
+  {
+    id: "ethan",
+    name: "Ethan",
+    gender: "male",
+    voiceId: "fable",
+    photo: "https://randomuser.me/api/portraits/men/18.jpg",
+    description: "Expressive, articulate and sharp.",
+  },
+  {
+    id: "alex",
+    name: "Alex",
+    gender: "male",
+    voiceId: "ash",
+    photo: "https://randomuser.me/api/portraits/men/61.jpg",
+    description: "Balanced, modern and approachable.",
   },
 ];
 
@@ -220,7 +278,7 @@ export function InterviewProcess({
   const [voiceNotice, setVoiceNotice] = useState<string | null>(null);
   const [interimTranscript, setInterimTranscript] = useState("");
   const [selectedInterviewerId, setSelectedInterviewerId] =
-    useState<InterviewerOption["id"]>("female");
+    useState<string>("sarah");
 
   const [hasSpeechRecognition, setHasSpeechRecognition] = useState(false);
   const [voiceEngine, setVoiceEngine] = useState<VoiceEngine>("none");
@@ -449,7 +507,7 @@ export function InterviewProcess({
         },
         body: JSON.stringify({
           text,
-          interviewerId: selectedInterviewer.id,
+          voiceId: selectedInterviewer.voiceId,
         }),
       });
 
@@ -503,7 +561,7 @@ export function InterviewProcess({
     window.speechSynthesis.cancel();
 
     const utterance = new SpeechSynthesisUtterance(text);
-    const isFemale = selectedInterviewer.id === "female";
+    const isFemale = selectedInterviewer.gender === "female";
 
     const applyVoice = () => {
       const voices = window.speechSynthesis.getVoices();
@@ -837,10 +895,12 @@ export function InterviewProcess({
               <p className="text-sm font-semibold uppercase tracking-[0.18em] text-accent">
                 Choose your interviewer
               </p>
-              <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                {interviewerOptions.map((option) => {
-                  const isActive = option.id === selectedInterviewerId;
 
+              {/* Female voices */}
+              <p className="mt-4 mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-muted">Female</p>
+              <div className="grid gap-2 grid-cols-2 sm:grid-cols-4">
+                {interviewerOptions.filter(o => o.gender === "female").map((option) => {
+                  const isActive = option.id === selectedInterviewerId;
                   return (
                     <button
                       key={option.id}
@@ -852,38 +912,64 @@ export function InterviewProcess({
                         setVoiceNotice(null);
                         stopSpeaking();
                       }}
-                      className={`rounded-[1.35rem] border px-4 py-4 text-left transition ${
+                      className={`rounded-[1.2rem] border px-3 py-3 text-left transition ${
                         isActive
-                          ? "border-[#10233c] bg-[#10233c] text-white shadow-[0_18px_38px_rgba(16,35,60,0.18)]"
-                          : "border-line bg-white/84 text-foreground hover:bg-white"
+                          ? "border-[#ff8c61] bg-[#fff4ef] shadow-[0_8px_24px_rgba(255,140,97,0.18)]"
+                          : "border-line bg-white/84 hover:bg-white hover:border-[#ff8c61]/40"
                       }`}
                     >
-                      <div className="flex items-center gap-3">
-                        <Image
-                          src={option.photo}
-                          alt={option.name}
-                          width={48}
-                          height={48}
-                          className="h-12 w-12 rounded-full object-cover object-top border-2 border-white/20"
-                        />
+                      <div className="flex flex-col items-center gap-2 text-center">
+                        <div className={`relative h-14 w-14 rounded-full overflow-hidden border-2 ${isActive ? "border-[#ff8c61]" : "border-white/40"}`}>
+                          <Image src={option.photo} alt={option.name} fill className="object-cover object-top" />
+                        </div>
                         <div>
-                          <p className="text-base font-semibold">{option.name}</p>
-                          <p className={`text-xs ${isActive ? "text-white/60" : "text-muted"}`}>
-                            {option.id === "female" ? "Female · AI Voice" : "Male · AI Voice"}
-                          </p>
+                          <p className={`text-sm font-semibold ${isActive ? "text-[#c2521a]" : "text-foreground"}`}>{option.name}</p>
+                          <p className={`text-[10px] mt-0.5 leading-4 ${isActive ? "text-[#c2521a]/70" : "text-muted"}`}>{option.description}</p>
                         </div>
                       </div>
-                      <p className={`mt-3 text-sm leading-6 ${isActive ? "text-white/78" : "text-muted"}`}>
-                        {option.id === "female"
-                          ? "Warm, composed, polished interviewer energy."
-                          : "Measured, grounded, executive interviewer energy."}
-                      </p>
                     </button>
                   );
                 })}
               </div>
+
+              {/* Male voices */}
+              <p className="mt-4 mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-muted">Male</p>
+              <div className="grid gap-2 grid-cols-2 sm:grid-cols-4">
+                {interviewerOptions.filter(o => o.gender === "male").map((option) => {
+                  const isActive = option.id === selectedInterviewerId;
+                  return (
+                    <button
+                      key={option.id}
+                      type="button"
+                      onClick={() => {
+                        setSelectedInterviewerId(option.id);
+                        setDraftAnswers({});
+                        setCurrentIndex(0);
+                        setVoiceNotice(null);
+                        stopSpeaking();
+                      }}
+                      className={`rounded-[1.2rem] border px-3 py-3 text-left transition ${
+                        isActive
+                          ? "border-[#10233c] bg-[#10233c] text-white shadow-[0_8px_24px_rgba(16,35,60,0.22)]"
+                          : "border-line bg-white/84 hover:bg-white hover:border-[#10233c]/30"
+                      }`}
+                    >
+                      <div className="flex flex-col items-center gap-2 text-center">
+                        <div className={`relative h-14 w-14 rounded-full overflow-hidden border-2 ${isActive ? "border-white/40" : "border-white/40"}`}>
+                          <Image src={option.photo} alt={option.name} fill className="object-cover object-top" />
+                        </div>
+                        <div>
+                          <p className={`text-sm font-semibold ${isActive ? "text-white" : "text-foreground"}`}>{option.name}</p>
+                          <p className={`text-[10px] mt-0.5 leading-4 ${isActive ? "text-white/60" : "text-muted"}`}>{option.description}</p>
+                        </div>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+
               <p className="mt-4 text-sm leading-6 text-muted">
-                When real AI voice is available, {selectedInterviewer.name} will open the interview like a live call and guide the session naturally.
+                All voices are powered by OpenAI TTS for natural, human-quality audio.
               </p>
             </div>
 
@@ -893,7 +979,7 @@ export function InterviewProcess({
                 <span>{selectedInterviewer.name}</span>
               </div>
               <div className="mt-4 aspect-[4/3]">
-                <InterviewerFigure interviewerId={selectedInterviewer.id} photo={selectedInterviewer.photo} state="idle" />
+                <InterviewerFigure name={selectedInterviewer.name} photo={selectedInterviewer.photo} state="idle" />
               </div>
             </div>
           </div>
@@ -1098,7 +1184,7 @@ export function InterviewProcess({
             {/* Interviewer — left, large */}
             <div className="overflow-hidden rounded-[1.8rem] border border-white/10">
               <div className="aspect-[4/3]">
-                <InterviewerFigure interviewerId={selectedInterviewer.id} photo={selectedInterviewer.photo} state={voiceState} />
+                <InterviewerFigure name={selectedInterviewer.name} photo={selectedInterviewer.photo} state={voiceState} />
               </div>
             </div>
 
