@@ -190,7 +190,7 @@ const interviewerOptions: InterviewerOption[] = [
     id: "marcus",
     name: "Marcus",
     gender: "male",
-    voiceId: "verse",
+    voiceId: "onyx",
     photo: "https://randomuser.me/api/portraits/men/32.jpg",
     description: "Deep, confident and composed.",
   },
@@ -198,7 +198,7 @@ const interviewerOptions: InterviewerOption[] = [
     id: "james",
     name: "James",
     gender: "male",
-    voiceId: "echo",
+    voiceId: "fable",
     photo: "https://randomuser.me/api/portraits/men/45.jpg",
     description: "Clear, professional and focused.",
   },
@@ -206,7 +206,7 @@ const interviewerOptions: InterviewerOption[] = [
     id: "ethan",
     name: "Ethan",
     gender: "male",
-    voiceId: "fable",
+    voiceId: "echo",
     photo: "https://randomuser.me/api/portraits/men/18.jpg",
     description: "Expressive, articulate and sharp.",
   },
@@ -214,7 +214,7 @@ const interviewerOptions: InterviewerOption[] = [
     id: "alex",
     name: "Alex",
     gender: "male",
-    voiceId: "ballad",
+    voiceId: "echo",
     photo: "https://randomuser.me/api/portraits/men/61.jpg",
     description: "Balanced, modern and approachable.",
   },
@@ -361,6 +361,14 @@ export function InterviewProcess({
       recognitionRef.current?.stop();
     };
   }, []);
+
+  // Attach camera stream to video element after it mounts (stream is obtained before hasStarted=true)
+  useEffect(() => {
+    if (hasStarted && cameraPermission === "granted" && cameraStreamRef.current && videoRef.current) {
+      videoRef.current.srcObject = cameraStreamRef.current;
+      videoRef.current.play().catch(() => undefined);
+    }
+  }, [hasStarted, cameraPermission]);
 
   useEffect(() => {
     if (!hasStarted || isComplete || cameraPermission !== "granted" || !videoRef.current) {
