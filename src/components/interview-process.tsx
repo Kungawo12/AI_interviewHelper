@@ -173,7 +173,7 @@ const interviewerOptions: InterviewerOption[] = [
     id: "olivia",
     name: "Olivia",
     gender: "female",
-    voiceId: "coral",
+    voiceId: "alloy",
     photo: "https://randomuser.me/api/portraits/women/33.jpg",
     description: "Expressive, polished and direct.",
   },
@@ -190,7 +190,7 @@ const interviewerOptions: InterviewerOption[] = [
     id: "marcus",
     name: "Marcus",
     gender: "male",
-    voiceId: "onyx",
+    voiceId: "verse",
     photo: "https://randomuser.me/api/portraits/men/32.jpg",
     description: "Deep, confident and composed.",
   },
@@ -214,7 +214,7 @@ const interviewerOptions: InterviewerOption[] = [
     id: "alex",
     name: "Alex",
     gender: "male",
-    voiceId: "ash",
+    voiceId: "ballad",
     photo: "https://randomuser.me/api/portraits/men/61.jpg",
     description: "Balanced, modern and approachable.",
   },
@@ -282,6 +282,15 @@ export function InterviewProcess({
 
   const [hasSpeechRecognition, setHasSpeechRecognition] = useState(false);
   const [voiceEngine, setVoiceEngine] = useState<VoiceEngine>("none");
+  const [autoAdvanceCountdown, setAutoAdvanceCountdown] = useState<number | null>(null);
+  const autoAdvanceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [feedback, setFeedback] = useState<{
+    summary: string;
+    strengths: string[];
+    improvements: string[];
+    overallScore: number;
+  } | null>(null);
+  const [isFetchingFeedback, setIsFetchingFeedback] = useState(false);
   const [cameraPermission, setCameraPermission] =
     useState<PermissionState>("idle");
   const [presenceMetrics, setPresenceMetrics] = useState<PresenceMetrics>({
@@ -299,8 +308,13 @@ export function InterviewProcess({
   const presenceCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const prevFrameRef = useRef<Uint8ClampedArray | null>(null);
   const presenceHistoryRef = useRef<{ attention: number; eyeContact: number; confidence: number }[]>([]);
+  const speakIdRef = useRef(0);
 
   const currentQuestion = questions[currentIndex];
+  const draftAnswersRef = useRef(draftAnswers);
+  useEffect(() => { draftAnswersRef.current = draftAnswers; }, [draftAnswers]);
+  const currentQuestionRef = useRef(currentQuestion);
+  useEffect(() => { currentQuestionRef.current = currentQuestion; }, [currentQuestion]);
   const currentAnswer = draftAnswers[currentQuestion.id] ?? "";
   const progress = useMemo(() => {
     if (!questions.length) {
@@ -477,77 +491,91 @@ export function InterviewProcess({
   }, [currentIndex, hasStarted, isComplete]);
 
   function stopSpeaking() {
+    speakIdRef.current += 1;
     if (audioRef.current) {
       audioRef.current.pause();
       audioRef.current = null;
     }
-
     if (typeof window !== "undefined" && window.speechSynthesis) {
       window.speechSynthesis.cancel();
     }
+    setVoiceState((s) => (s !== "idle" ? "idle" : s));
+  }
 
-    if (speechTimeoutRef.current) {
-      window.clearTimeout(speechTimeoutRef.current);
-      speechTimeoutRef.current = null;
-    }
+  function splitSentences(text: string): string[] {
+    const parts = text.match(/[^.!?]+[.!?]+|[^.!?]+$/g) ?? [text];
+    return parts.map((s) => s.trim()).filter((s) => s.length > 3);
+  }
 
-    if (voiceState === "speaking") {
-      setVoiceState("idle");
+  async function fetchAudioUrl(sentence: string, voiceId: string): Promise<string | null> {
+    try {
+      const res = await fetch("/api/voice", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: sentence, voiceId }),
+      });
+      if (!res.ok) return null;
+      const blob = await res.blob();
+      return URL.createObjectURL(blob);
+    } catch {
+      return null;
     }
   }
 
   async function speakText(text: string, notice: string) {
     stopSpeaking();
+    const myId = speakIdRef.current;
 
-    try {
-      const response = await fetch("/api/voice", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          text,
-          voiceId: selectedInterviewer.voiceId,
-        }),
-      });
+    const sentences = splitSentences(text);
+    if (!sentences.length) return;
 
-      if (response.ok) {
-        const blob = await response.blob();
-        const audioUrl = URL.createObjectURL(blob);
-        const audio = new Audio(audioUrl);
-        audioRef.current = audio;
+    const voiceId = selectedInterviewer.voiceId;
 
-        audio.onplay = () => {
-          setVoiceEngine("ai");
-          setVoiceState("speaking");
-          setVoiceNotice(notice);
-        };
+    const fetches = sentences.map((s) => fetchAudioUrl(s, voiceId));
 
-        audio.onended = () => {
-          URL.revokeObjectURL(audioUrl);
-          audioRef.current = null;
-          setVoiceState("idle");
-          setVoiceNotice("Question finished. You can answer by voice or by typing.");
-        };
+    let usedAi = false;
 
-        audio.onerror = () => {
-          URL.revokeObjectURL(audioUrl);
-          audioRef.current = null;
-          setVoiceEngine("unavailable");
-          setVoiceState("idle");
-          setVoiceNotice(
-            "Real AI voice could not finish playback. Add OPENAI_API_KEY in Vercel so the interviewer can use generated voice reliably.",
-          );
-        };
+    for (const fetchPromise of fetches) {
+      if (speakIdRef.current !== myId) return;
 
-        await audio.play();
+      const url = await fetchPromise;
+
+      if (speakIdRef.current !== myId) {
+        if (url) URL.revokeObjectURL(url);
         return;
       }
 
-      speakWithBrowser(text, notice);
-    } catch {
-      speakWithBrowser(text, notice);
+      if (url) {
+        if (!usedAi) {
+          usedAi = true;
+          setVoiceEngine("ai");
+          setVoiceState("speaking");
+          setVoiceNotice(notice);
+        }
+        await new Promise<void>((resolve) => {
+          const audio = new Audio(url);
+          audioRef.current = audio;
+          const done = () => {
+            URL.revokeObjectURL(url);
+            audioRef.current = null;
+            resolve();
+          };
+          audio.onended = done;
+          audio.onerror = done;
+          audio.play().catch(done);
+        });
+      }
     }
+
+    if (speakIdRef.current !== myId) return;
+
+    if (!usedAi) {
+      speakWithBrowser(text, notice);
+      return;
+    }
+
+    setVoiceState("idle");
+    setVoiceNotice("Question finished. You can answer by voice or by typing.");
   }
 
   function speakWithBrowser(text: string, notice: string) {
@@ -721,6 +749,31 @@ export function InterviewProcess({
     setVoiceState((previous) => (previous === "listening" ? "idle" : previous));
   }
 
+  function cancelAutoAdvance() {
+    if (autoAdvanceTimerRef.current) {
+      clearTimeout(autoAdvanceTimerRef.current);
+      autoAdvanceTimerRef.current = null;
+    }
+    setAutoAdvanceCountdown(null);
+  }
+
+  function startAutoAdvance() {
+    cancelAutoAdvance();
+    setAutoAdvanceCountdown(3);
+    let count = 3;
+    const tick = () => {
+      count -= 1;
+      if (count <= 0) {
+        setAutoAdvanceCountdown(null);
+        goToNextQuestion();
+      } else {
+        setAutoAdvanceCountdown(count);
+        autoAdvanceTimerRef.current = setTimeout(tick, 1000);
+      }
+    };
+    autoAdvanceTimerRef.current = setTimeout(tick, 1000);
+  }
+
   function startListening() {
     if (!hasSpeechRecognition) {
       setVoiceNotice(
@@ -784,6 +837,7 @@ export function InterviewProcess({
         }
 
         setInterimTranscript(liveTranscript.trim());
+        cancelAutoAdvance();
       };
 
       recognition.onerror = () => {
@@ -799,6 +853,10 @@ export function InterviewProcess({
         recognitionQuestionIdRef.current = null;
         setInterimTranscript("");
         setVoiceState((previous) => (previous === "listening" ? "idle" : previous));
+        const hasAnswer = !!(draftAnswersRef.current[currentQuestionRef.current.id]?.trim());
+        if (hasAnswer) {
+          startAutoAdvance();
+        }
       };
 
       recognitionRef.current = recognition;
@@ -826,6 +884,34 @@ export function InterviewProcess({
     speakIntroductionAndQuestion(questions[0].questionText);
   }
 
+  async function generateFeedback() {
+    setIsFetchingFeedback(true);
+    try {
+      const qaData = questions.map((q) => ({
+        question: q.questionText,
+        answer: draftAnswers[q.id] ?? "(no answer provided)",
+      }));
+      const res = await fetch("/api/feedback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ questions: qaData, jobTitle, companyName }),
+      });
+      if (res.ok) {
+        const data = await res.json() as typeof feedback;
+        setFeedback(data);
+        if (data?.summary) {
+          void speakText(
+            `Great session. Here is my feedback. ${data.summary} You should focus more on: ${(data.improvements ?? []).join(", and ")}.`,
+            "Interviewer is giving feedback on your session...",
+          );
+        }
+      }
+    } catch { }
+    finally {
+      setIsFetchingFeedback(false);
+    }
+  }
+
   function resetToInterviewStart() {
     stopListening();
     stopSpeaking();
@@ -849,10 +935,12 @@ export function InterviewProcess({
   }
 
   function goToNextQuestion() {
+    cancelAutoAdvance();
     if (currentIndex === questions.length - 1) {
       stopListening();
       stopSpeaking();
       setIsComplete(true);
+      void generateFeedback();
       setVoiceNotice("Interview finished. Great work staying through the full session.");
       return;
     }
@@ -1045,21 +1133,15 @@ export function InterviewProcess({
     return (
       <section className="glass-card rounded-[1.9rem] border border-white/60 p-6 shadow-[0_24px_70px_rgba(19,34,56,0.08)] sm:p-8">
         <div className="space-y-6">
-          <div className="flex flex-wrap items-center gap-3">
-            <span className="rounded-full bg-[#10233c] px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-white">
-              Interview complete
-            </span>
-            <span className="rounded-full bg-[#ff8c61]/12 px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-accent-strong">
-              Total time {formatDuration(elapsedSeconds)}
-            </span>
-          </div>
-
           <div className="space-y-3">
+            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-accent">
+              Interview complete
+            </p>
             <h2 className="font-display text-4xl tracking-[-0.06em] text-foreground sm:text-5xl">
-              You finished the session.
+              Well done.
             </h2>
             <p className="max-w-2xl text-sm leading-7 text-muted sm:text-base">
-              You made it through all {questions.length} questions for {jobTitle}
+              You completed all {questions.length} questions for {jobTitle}
               {companyName ? ` at ${companyName}` : ""}.
             </p>
           </div>
@@ -1067,27 +1149,77 @@ export function InterviewProcess({
           <div className="rounded-[1.5rem] border border-line bg-white/76 p-5">
             <div className="grid gap-4 sm:grid-cols-3">
               <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-accent">
-                  Progress
-                </p>
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-accent">Progress</p>
                 <p className="mt-2 text-sm text-foreground">100%</p>
               </div>
               <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-accent">
-                  Questions answered
-                </p>
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-accent">Questions answered</p>
                 <p className="mt-2 text-sm text-foreground">{questions.length}</p>
               </div>
               <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-accent">
-                  Session timer
-                </p>
-                <p className="mt-2 text-sm text-foreground">
-                  {formatDuration(elapsedSeconds)}
-                </p>
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-accent">Session timer</p>
+                <p className="mt-2 text-sm text-foreground">{formatDuration(elapsedSeconds)}</p>
               </div>
             </div>
           </div>
+
+          {isFetchingFeedback && (
+            <div className="rounded-[1.5rem] border border-line bg-white/76 p-6 text-center">
+              <div className="flex items-center justify-center gap-3">
+                <div className="h-5 w-5 animate-spin rounded-full border-2 border-accent border-t-transparent" />
+                <p className="text-sm text-muted">{selectedInterviewer.name} is reviewing your answers...</p>
+              </div>
+            </div>
+          )}
+
+          {feedback && (
+            <div className="space-y-4">
+              <div className="rounded-[1.5rem] border border-[#10233c]/12 bg-[#10233c] p-6">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-white/60">
+                      Interviewer feedback
+                    </p>
+                    <p className="mt-3 text-base leading-7 text-white">{feedback.summary}</p>
+                  </div>
+                  <div className="flex-shrink-0 rounded-[1rem] bg-white/10 px-4 py-3 text-center">
+                    <p className="text-3xl font-bold text-white">{feedback.overallScore}</p>
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-white/60">/ 10</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="rounded-[1.5rem] border border-[#5ce28a]/20 bg-[#0f2a1a] p-5">
+                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#5ce28a]">
+                    Strengths
+                  </p>
+                  <ul className="mt-4 space-y-3">
+                    {feedback.strengths.map((s, i) => (
+                      <li key={i} className="flex items-start gap-3 text-sm leading-6 text-white/80">
+                        <span className="mt-0.5 h-5 w-5 flex-shrink-0 rounded-full bg-[#5ce28a]/20 text-center text-xs font-bold text-[#5ce28a] leading-5">{i + 1}</span>
+                        {s}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+
+                <div className="rounded-[1.5rem] border border-[#ff8c61]/20 bg-[#2a1209] p-5">
+                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#ff8c61]">
+                    Focus areas
+                  </p>
+                  <ul className="mt-4 space-y-3">
+                    {feedback.improvements.map((s, i) => (
+                      <li key={i} className="flex items-start gap-3 text-sm leading-6 text-white/80">
+                        <span className="mt-0.5 h-5 w-5 flex-shrink-0 rounded-full bg-[#ff8c61]/20 text-center text-xs font-bold text-[#ff8c61] leading-5">{i + 1}</span>
+                        {s}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </section>
     );
@@ -1180,79 +1312,70 @@ export function InterviewProcess({
             </div>
           </div>
 
-          <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1fr)_300px]">
-            {/* Interviewer — left, large */}
+          <div className="mt-4 grid gap-4 lg:grid-cols-2">
+            {/* Interviewer — left */}
             <div className="overflow-hidden rounded-[1.8rem] border border-white/10">
               <div className="aspect-[4/3]">
                 <InterviewerFigure name={selectedInterviewer.name} photo={selectedInterviewer.photo} state={voiceState} />
               </div>
             </div>
 
-            {/* Right column — user camera + presence */}
-            <div className="space-y-4">
-              <div className="overflow-hidden rounded-[1.5rem] border border-white/10 bg-[#132238]">
-                <div className="flex items-center justify-between border-b border-white/10 px-3 py-2">
-                  <div className="flex items-center gap-2">
-                    <span className={`h-2 w-2 rounded-full ${cameraPermission === "granted" ? "bg-[#5ce28a] animate-pulse" : "bg-white/30"}`} />
-                    <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-white/68">You</span>
-                  </div>
-                  <span className="text-[11px] text-white/40">{cameraPermission}</span>
+            {/* Right column — user camera */}
+            <div className="overflow-hidden rounded-[1.5rem] border border-white/10 bg-[#132238]">
+              <div className="flex items-center justify-between border-b border-white/10 px-3 py-2">
+                <div className="flex items-center gap-2">
+                  <span className={`h-2 w-2 rounded-full ${cameraPermission === "granted" ? "bg-[#5ce28a] animate-pulse" : "bg-white/30"}`} />
+                  <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-white/68">You</span>
                 </div>
-                <div className="relative aspect-[3/4] bg-[linear-gradient(180deg,#1a3556,#0d1623)]">
-                  <video
-                    ref={videoRef}
-                    autoPlay
-                    muted
-                    playsInline
-                    className="h-full w-full object-cover"
-                    style={{ transform: "scaleX(-1)" }}
-                  />
-                  {cameraPermission !== "granted" ? (
-                    <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 px-4 text-center">
-                      <div className="h-16 w-16 rounded-full bg-white/8 flex items-center justify-center text-2xl">👤</div>
-                      <p className="text-sm leading-6 text-white/60">
-                        Your camera will appear here.
-                      </p>
-                    </div>
-                  ) : null}
-                  {/* Name overlay */}
-                  <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between rounded-[0.8rem] bg-black/50 px-3 py-2 backdrop-blur-sm">
-                    <span className="text-xs font-semibold text-white">You</span>
-                    {voiceState === "listening" && (
-                      <span className="text-[10px] text-[#5ce28a] animate-pulse">● Listening</span>
-                    )}
+                <span className="text-[11px] text-white/40">{cameraPermission}</span>
+              </div>
+              <div className="relative aspect-[4/3] bg-[linear-gradient(180deg,#1a3556,#0d1623)]">
+                <video
+                  ref={videoRef}
+                  autoPlay
+                  muted
+                  playsInline
+                  className="h-full w-full object-cover"
+                  style={{ transform: "scaleX(-1)" }}
+                />
+                {cameraPermission !== "granted" ? (
+                  <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 px-4 text-center">
+                    <div className="h-16 w-16 rounded-full bg-white/8 flex items-center justify-center text-2xl">👤</div>
+                    <p className="text-sm leading-6 text-white/60">
+                      Your camera will appear here.
+                    </p>
                   </div>
+                ) : null}
+                <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between rounded-[0.8rem] bg-black/50 px-3 py-2 backdrop-blur-sm">
+                  <span className="text-xs font-semibold text-white">You</span>
+                  {voiceState === "listening" && (
+                    <span className="text-[10px] text-[#5ce28a] animate-pulse">● Listening</span>
+                  )}
                 </div>
               </div>
+            </div>
+          </div>
 
-              <div className="rounded-[1.5rem] border border-white/10 bg-white/6 p-4">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-white/68">
-                  Presence
-                </p>
-                <div className="mt-3 space-y-3">
-                  {[
-                    ["Attention", presenceMetrics.attention],
-                    ["Eye contact", presenceMetrics.eyeContact],
-                    ["Confidence", presenceMetrics.confidence],
-                  ].map(([label, value]) => (
-                    <div key={label}>
-                      <div className="flex items-center justify-between text-xs text-white/70">
-                        <span>{label}</span>
-                        <span>{value}%</span>
-                      </div>
-                      <div className="mt-1.5 h-1.5 rounded-full bg-white/10">
-                        <div
-                          className="h-1.5 rounded-full bg-[linear-gradient(90deg,#ff8c61,#f3c07a)] transition-all duration-700"
-                          style={{ width: `${value}%` }}
-                        />
-                      </div>
-                    </div>
-                  ))}
+          <div className="mt-4 rounded-[1.35rem] border border-white/10 bg-white/6 px-5 py-4">
+            <div className="grid grid-cols-3 gap-6">
+              {[
+                ["Attention", presenceMetrics.attention],
+                ["Eye contact", presenceMetrics.eyeContact],
+                ["Confidence", presenceMetrics.confidence],
+              ].map(([label, value]) => (
+                <div key={String(label)}>
+                  <div className="flex items-center justify-between text-xs text-white/70 mb-1.5">
+                    <span>{label}</span>
+                    <span className="font-semibold">{value}%</span>
+                  </div>
+                  <div className="h-1.5 rounded-full bg-white/10">
+                    <div
+                      className="h-1.5 rounded-full bg-[linear-gradient(90deg,#ff8c61,#f3c07a)] transition-all duration-700"
+                      style={{ width: `${value}%` }}
+                    />
+                  </div>
                 </div>
-                <p className="mt-3 text-xs leading-5 text-white/50">
-                  {presenceMetrics.status}
-                </p>
-              </div>
+              ))}
             </div>
           </div>
 
@@ -1303,6 +1426,18 @@ export function InterviewProcess({
 
         <div className="rounded-[1.5rem] border border-line bg-white/76 p-5">
           <p className="text-sm font-semibold text-foreground">Your answer</p>
+          {autoAdvanceCountdown !== null && (
+            <div className="mb-3 flex items-center justify-between rounded-[1.1rem] bg-[#10233c] px-4 py-3 text-sm text-white">
+              <span>Moving to next question in <strong>{autoAdvanceCountdown}s</strong>...</span>
+              <button
+                type="button"
+                onClick={cancelAutoAdvance}
+                className="rounded-[0.8rem] bg-white/15 px-3 py-1.5 text-xs font-semibold transition hover:bg-white/25"
+              >
+                Keep answering
+              </button>
+            </div>
+          )}
           <textarea
             rows={10}
             value={currentAnswer}
