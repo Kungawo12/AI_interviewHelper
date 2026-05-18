@@ -110,25 +110,41 @@ export default async function Home({
                     }`}
                   >
                     <div className="flex items-center gap-2">
-                      <span className={`text-sm font-bold ${
-                        level.color === "emerald" ? "text-emerald-700" : level.color === "blue" ? "text-blue-700" : "text-[#c0521e]"
-                      }`}>
+                      <span
+                        className={`text-sm font-bold ${
+                          level.color === "emerald"
+                            ? "text-emerald-700"
+                            : level.color === "blue"
+                              ? "text-blue-700"
+                              : "text-[#c0521e]"
+                        }`}
+                      >
                         {level.label}
                       </span>
-                      <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] ${
-                        level.color === "emerald"
-                          ? "bg-emerald-100 text-emerald-700"
-                          : level.color === "blue"
-                            ? "bg-blue-100 text-blue-700"
-                            : "bg-[#ff8c61]/15 text-[#c0521e]"
-                      }`}>
+                      <span
+                        className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] ${
+                          level.color === "emerald"
+                            ? "bg-emerald-100 text-emerald-700"
+                            : level.color === "blue"
+                              ? "bg-blue-100 text-blue-700"
+                              : "bg-[#ff8c61]/15 text-[#c0521e]"
+                        }`}
+                      >
                         {level.badge}
                       </span>
                     </div>
-                    <p className="mt-2 text-sm leading-6 text-muted">{level.desc}</p>
-                    <p className={`mt-2 text-xs font-semibold ${
-                      level.color === "emerald" ? "text-emerald-600" : level.color === "blue" ? "text-blue-600" : "text-[#c0521e]"
-                    }`}>
+                    <p className="mt-2 text-sm leading-6 text-muted">
+                      {level.desc}
+                    </p>
+                    <p
+                      className={`mt-2 text-xs font-semibold ${
+                        level.color === "emerald"
+                          ? "text-emerald-600"
+                          : level.color === "blue"
+                            ? "text-blue-600"
+                            : "text-[#c0521e]"
+                      }`}
+                    >
                       {level.detail}
                     </p>
                   </div>
@@ -181,9 +197,7 @@ export default async function Home({
 
           {params?.error === "duplicate-session" && existingSessionId ? (
             <div className="mt-4 flex flex-wrap items-center gap-3 rounded-[1.4rem] border border-[#10233c]/10 bg-[#10233c]/6 px-4 py-4 text-sm text-foreground">
-              <span>
-                Your previous session is still available.
-              </span>
+              <span>Your previous session is still available.</span>
               <Link
                 href={`/interview/session/${existingSessionId}`}
                 className="inline-flex items-center justify-center rounded-xl bg-[#10233c] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#183252]"
